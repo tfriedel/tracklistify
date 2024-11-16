@@ -11,6 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.0] - 2024-02-21
+
+### Added
+- Modular package structure with dedicated modules:
+  - config.py for configuration management
+  - logger.py for centralized logging
+  - track.py for track identification
+  - downloader.py for audio downloads
+- Type hints throughout the codebase
+- Proper package installation with setup.py
+- Development environment setup
+- Comprehensive logging system with file output
+- Factory pattern for platform-specific downloaders
+
+### Changed
+- Restructured project into proper Python package
+- Improved configuration using dataclasses
+- Enhanced error handling and logging
+- Updated documentation with new structure
+- Improved code organization and maintainability
+
+### Fixed
+- FFmpeg path detection on different platforms
+- Package dependencies and versions
+- Installation process
+
 ## [0.2.0] - 2024-02-21
 
 ### Added
