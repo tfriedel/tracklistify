@@ -235,6 +235,61 @@ logger.error("Error message")
 2024-01-15 14:30:47 [ERROR] Failed to parse ACRCloud response: Invalid JSON
 ```
 
+## Error Handling
+
+Tracklistify implements a robust error handling system with retry mechanisms and timeouts:
+
+### Custom Exceptions
+```python
+from tracklistify.exceptions import APIError, DownloadError, TimeoutError
+
+# Handle specific error types
+try:
+    result = identify_track(audio_file)
+except APIError as e:
+    logger.error(f"API Error: {e.status_code} - {e.response}")
+except DownloadError as e:
+    logger.error(f"Download failed for {e.url}: {str(e.cause)}")
+except TimeoutError as e:
+    logger.error(f"{e.operation} timed out after {e.timeout}s")
+```
+
+### Retry Mechanism
+```python
+from tracklistify.retry import retry, with_timeout
+
+# Retry API calls with exponential backoff
+@retry(max_attempts=3, base_delay=1.0, exceptions=[APIError])
+@with_timeout(timeout=30.0)
+def make_api_request():
+    # API call implementation
+    pass
+
+# Custom retry behavior
+@retry(
+    max_attempts=5,
+    base_delay=2.0,
+    max_delay=30.0,
+    exceptions=[ConnectionError, TimeoutError],
+    timeout=60.0,
+    on_retry=lambda attempt, delay, error: print(f"Retrying... {attempt}")
+)
+def download_file(url: str):
+    # Download implementation
+    pass
+```
+
+### Error Types
+- `TracklistifyError`: Base exception class
+- `APIError`: API request failures
+- `DownloadError`: Download operation failures
+- `ConfigError`: Configuration issues
+- `AudioProcessingError`: Audio processing failures
+- `TrackIdentificationError`: Track identification issues
+- `ValidationError`: Input validation failures
+- `RetryExceededError`: Maximum retry attempts exceeded
+- `TimeoutError`: Operation timeout
+
 ## Development
 
 1. Install development dependencies:

@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.3] - 2024-01-15
+
+### Added
+- Comprehensive error handling system with specific exception types
+- Retry mechanism with exponential backoff for API calls
+- Timeout handling for long-running operations
+- Custom exceptions for different error scenarios
+- Detailed error logging and reporting
+
+### Changed
+- Enhanced API calls with retry logic
+- Improved download operations with timeout handling
+- Updated error messages with more context
+- Added detailed error documentation
+
 ## [0.3.2] - 2024-01-15
 
 ### Added
