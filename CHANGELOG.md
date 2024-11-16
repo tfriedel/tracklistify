@@ -7,9 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Support for additional platforms (Mixcloud, SoundCloud)
+- Provider fallback mechanism
+- Advanced error recovery strategies
+- Batch processing for multiple files
+- Progress bar for long operations
+- CLI improvements:
+  - Interactive mode
+  - Configuration wizard
+  - Batch processing options
+- Web interface for easier usage
+- Docker support
+- Additional output formats:
+  - CSV export
+  - XML export
+  - Rekordbox compatible format
+
+## [0.4.0] - 2024-03-21
+### Added
+- Multiple provider support through provider interface
+- Spotify integration for metadata enrichment
+- Provider factory for managing multiple providers
+- Comprehensive test suite for providers
 - File-based caching system for API responses
 - Token bucket rate limiter for API calls
 - Memory-efficient chunk-based audio processing
+- Retry mechanism with exponential backoff for API calls
+- Timeout handling for long-running operations
+- Enhanced logging system with colored console output
+- Configurable log file output with timestamps
+- Debug-level logging for development
+- Custom log formatters for both console and file output
+- Enhanced track identification verbosity
+- Comprehensive analysis summary in output files
+- Additional metadata in M3U playlists
+- Modular package structure with dedicated modules
+- Type hints throughout the codebase
+- Factory pattern for platform-specific downloaders
+- Enhanced track identification algorithm
 - Cache configuration options:
   - CACHE_ENABLED for toggling caching
   - CACHE_DIR for cache location
@@ -17,17 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rate limiting configuration:
   - RATE_LIMIT_ENABLED for toggling rate limiting
   - MAX_REQUESTS_PER_MINUTE for API throttling
-- Comprehensive test suite for track identification
-- Input validation for track metadata
-- Error handling for invalid audio files
-- Edge case handling for confidence thresholds
-- Chronological track ordering
-- Testing documentation in README.md
-- AI guidelines documentation
-- Changelog tracking
-- Code quality improvements
 
 ### Changed
+- Modular provider architecture
+- Enhanced metadata enrichment
 - Optimized memory usage during audio processing
 - Improved Track class with strict validation
 - Enhanced TrackMatcher with better error handling
