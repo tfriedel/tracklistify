@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 import yt_dlp
 from .logger import logger
-from .config import config
+from .config import get_config
 
 class Downloader(ABC):
     """Base class for audio downloaders."""
@@ -67,7 +67,7 @@ class YouTubeDownloader(Downloader):
             }],
             'ffmpeg_location': self.ffmpeg_path,
             'outtmpl': os.path.join(tempfile.gettempdir(), '%(id)s.%(ext)s'),
-            'verbose': config.app.verbose,
+            'verbose': get_config().app.verbose,
         }
         
         try:
@@ -84,6 +84,9 @@ class YouTubeDownloader(Downloader):
 
 class DownloaderFactory:
     """Factory for creating appropriate downloader instances."""
+    
+    def __init__(self):
+        self._config = get_config()
     
     @staticmethod
     def create_downloader(url: str) -> Optional[Downloader]:

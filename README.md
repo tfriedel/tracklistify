@@ -1,24 +1,22 @@
 # Tracklistify
 
-🎵 A powerful DJ mix track identification tool that helps you discover and catalog tracks from mixes, live streams, and audio files.
+Unleash the power of Tracklistify! Create playlists from Livesets, DJ Mixes and Podcasts by identifying tracks using advanced audio recognition. Whether you're analyzing local MP3 files or streaming from YouTube or Mixcloud, Tracklistify provides precise timestamps, detailed track info, and confidence scores. Perfect for DJs, music enthusiasts, and content creators.
 
-## Description
-
-Tracklistify is an intelligent audio analysis tool that automatically identifies tracks in DJ mixes and generates formatted track lists. It uses advanced audio fingerprinting to detect songs, handles overlapping transitions, and exports results in multiple formats (JSON, Markdown, M3U).
-
-## Topics
-
-`audio-analysis` `dj-tools` `music-recognition` `python` `track-identification` `playlist-generation` `audio-fingerprinting` `music-metadata` `tracklist-generator` `mix-analysis` `acrcloud` `audio-processing` `music-tools` `dj-software` `streaming-tools`
+Get started today and elevate your music experience!
 
 ## Features
 
-- Track identification using ACRCloud API
-- Support for YouTube downloads
-- Confidence-based track filtering
-- Automatic track merging for duplicates
-- Detailed JSON output with timestamps
-- Comprehensive logging system
-- Configurable via environment variables
+- 🎵 Accurate track identification in DJ mixes
+- 🌐 Support for online streaming platforms:
+  - YouTube
+  - Mixcloud
+  - Expandable to other platforms
+- ⏱️ Precise timestamp tracking for each identified song
+- 📊 Confidence scores for each match
+- 🎼 Detailed track information (artists, albums, labels, genres)
+- 📝 JSON export of results
+- 🔄 Smart duplicate detection and merging
+- 🎚️ Configurable analysis parameters
 
 ## Installation
 
@@ -300,6 +298,40 @@ def download_file(url: str):
 - `ValidationError`: Input validation failures
 - `RetryExceededError`: Maximum retry attempts exceeded
 - `TimeoutError`: Operation timeout
+
+## Testing
+
+Tracklistify includes a comprehensive test suite covering core functionality, edge cases, and error conditions:
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=tracklistify
+
+# Run specific test file
+pytest tests/test_track_identification.py
+```
+
+### Test Coverage
+
+The test suite includes:
+- Unit tests for configuration and track handling
+- Integration tests for the full identification pipeline
+- Error condition tests (empty files, invalid formats)
+- Edge case tests (confidence thresholds, duplicates)
+- Validation tests for track metadata
+
+### Writing Tests
+
+When adding new features, please ensure:
+1. Test coverage for new functionality
+2. Error handling tests for potential failure modes
+3. Edge case tests for boundary conditions
+4. Integration tests for feature interactions
 
 ## Development
 

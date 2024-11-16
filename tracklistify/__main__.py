@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
-from .config import config
+from .config import get_config
 from .logger import logger
 from .track import Track, TrackMatcher
 from .downloader import DownloaderFactory
@@ -53,6 +53,7 @@ def identify_tracks(audio_path: str) -> Optional[List[Track]]:
     Returns:
         List[Track]: List of identified tracks, or None if identification failed
     """
+    config = get_config()
     try:
         from acrcloud.recognizer import ACRCloudRecognizer
         from mutagen import File

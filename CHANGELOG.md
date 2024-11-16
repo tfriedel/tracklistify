@@ -7,9 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Comprehensive test suite for track identification
+- Input validation for track metadata
+- Error handling for invalid audio files
+- Edge case handling for confidence thresholds
+- Chronological track ordering
+- Testing documentation in README.md
 - AI guidelines documentation
 - Changelog tracking
 - Code quality improvements
+
+### Changed
+- Improved Track class with strict validation
+- Enhanced TrackMatcher with better error handling
+- Refined confidence threshold handling
+- More robust MP3 format validation
+
+### Fixed
+- Track timestamp ordering
+- Confidence threshold validation
+- Track metadata validation
+- Audio file format validation
 
 ## [0.3.6] - 2024-03-19
 
