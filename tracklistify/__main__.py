@@ -82,7 +82,8 @@ def identify_tracks(audio_path: str) -> Optional[List[Track]]:
             audio_data = f.read()
             
         logger.info(f"Starting track identification...")
-        logger.info(f"Total length: {timedelta(seconds=int(total_length))}")
+        total_time_str = f"{int(total_length//3600):02d}:{int((total_length%3600)//60):02d}:{int(total_length%60):02d}"
+        logger.info(f"Total length: {total_time_str}")
         logger.info(f"Total segments to analyze: {total_segments}")
         logger.info(f"Segment length: {segment_length} seconds")
         
@@ -93,7 +94,8 @@ def identify_tracks(audio_path: str) -> Optional[List[Track]]:
             end_bytes = int(((start_time + segment_length) / total_length) * len(audio_data))
             
             segment = audio_data[start_bytes:end_bytes]
-            time_str = str(timedelta(seconds=int(start_time)))
+            # Format time with leading zeros (HH:MM:SS)
+            time_str = f"{int(start_time//3600):02d}:{int((start_time%3600)//60):02d}:{int(start_time%60):02d}"
             logger.info(f"Analyzing segment {i+1}/{total_segments} at {time_str}...")
             
             result = recognizer.recognize_by_filebuffer(segment, 0)
