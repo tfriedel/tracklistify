@@ -11,6 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.6] - 2024-03-19
+
+### Fixed
+- Fixed track timing calculation using MP3 metadata for accurate timestamps
+- Adjusted default segment length to 60 seconds for better track identification
+- Removed redundant acrcloud-py dependency in favor of pyacrcloud
+
+### Added
+- Added mutagen dependency for MP3 metadata handling
+- Added total mix length display in track identification output
+
+### Changed
+- Improved segment timing calculation to use actual audio duration
+- Enhanced logging with proper time formatting (HH:MM:SS)
+- Updated requirements.txt for better dependency management
+
+## [0.3.5] - 2024-01-15
+
+### Fixed
+- YouTube download functionality
+- Import error handling for yt-dlp
+- Downloader factory creation
+- Mix information extraction order
+
+### Changed
+- Better error messages for missing dependencies
+- Improved YouTube URL handling
+- More robust downloader initialization
+- Cleaner error handling flow
+
 ## [0.3.4] - 2024-01-15
 
 ### Added

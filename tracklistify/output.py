@@ -13,14 +13,18 @@ from .logger import logger
 class TracklistOutput:
     """Handles tracklist output in various formats."""
     
-    def __init__(self, mix_info: dict):
+    def __init__(self, tracks: List[Track], mix_info: dict):
         """
-        Initialize with mix information.
+        Initialize with tracks and mix information.
         
         Args:
+            tracks: List of identified tracks
             mix_info: Dictionary containing mix metadata
         """
+        self.tracks = tracks
         self.mix_info = mix_info
+        self.output_dir = Path('tracklists')
+        self.output_dir.mkdir(exist_ok=True)
     
     def _format_filename(self, extension: str) -> str:
         """
@@ -59,20 +63,39 @@ class TracklistOutput:
         # Format filename
         return f"[{mix_date}] {artist} - {description}.{extension}"
     
-    def save_json(self, tracks: List[Track], output_dir: Path) -> Path:
+    def save(self, format_type: str) -> Optional[Path]:
+        """
+        Save tracks in specified format.
+        
+        Args:
+            format_type: Output format ('json', 'markdown', or 'm3u')
+            
+        Returns:
+            Path to saved file, or None if format is invalid
+        """
+        if format_type == 'json':
+            return self._save_json()
+        elif format_type == 'markdown':
+            return self._save_markdown()
+        elif format_type == 'm3u':
+            return self._save_m3u()
+        else:
+            logger.error(f"Invalid format type: {format_type}")
+            return None
+    
+    def _save_json(self) -> Path:
         """Save tracks as JSON file."""
-        output_dir.mkdir(exist_ok=True)
-        output_file = output_dir / self._format_filename('json')
+        output_file = self.output_dir / self._format_filename('json')
         
         data = {
             'mix_info': self.mix_info,
-            'track_count': len(tracks),
+            'track_count': len(self.tracks),
             'analysis_info': {
                 'timestamp': datetime.now().isoformat(),
-                'track_count': len(tracks),
-                'average_confidence': sum(t.confidence for t in tracks) / len(tracks) if tracks else 0,
-                'min_confidence': min(t.confidence for t in tracks) if tracks else 0,
-                'max_confidence': max(t.confidence for t in tracks) if tracks else 0,
+                'track_count': len(self.tracks),
+                'average_confidence': sum(t.confidence for t in self.tracks) / len(self.tracks) if self.tracks else 0,
+                'min_confidence': min(t.confidence for t in self.tracks) if self.tracks else 0,
+                'max_confidence': max(t.confidence for t in self.tracks) if self.tracks else 0,
             },
             'tracks': [
                 {
@@ -82,7 +105,7 @@ class TracklistOutput:
                     'confidence': track.confidence,
                     'duration': track.duration if hasattr(track, 'duration') else None
                 }
-                for track in tracks
+                for track in self.tracks
             ]
         }
         
@@ -96,59 +119,42 @@ class TracklistOutput:
         logger.info(f"- Confidence range: {data['analysis_info']['min_confidence']:.1f}% - {data['analysis_info']['max_confidence']:.1f}%")
         return output_file
     
-    def save_markdown(self, tracks: List[Track], output_dir: Path) -> Path:
+    def _save_markdown(self) -> Path:
         """Save tracks as Markdown file."""
-        output_dir.mkdir(exist_ok=True)
-        output_file = output_dir / self._format_filename('md')
+        output_file = self.output_dir / self._format_filename('md')
         
         with open(output_file, 'w', encoding='utf-8') as f:
             # Write header
-            f.write(f"# {self.mix_info.get('title', 'Tracklist')}\n\n")
+            f.write(f"# {self.mix_info.get('title', 'Unknown Mix')}\n\n")
             
-            if 'artist' in self.mix_info:
+            if self.mix_info.get('artist'):
                 f.write(f"**Artist:** {self.mix_info['artist']}\n")
-            if 'date' in self.mix_info:
+            if self.mix_info.get('date'):
                 f.write(f"**Date:** {self.mix_info['date']}\n")
-            if 'description' in self.mix_info:
-                f.write(f"\n{self.mix_info['description']}\n")
-            
-            # Write analysis info
-            f.write("\n## Analysis Info\n")
-            f.write(f"- **Total Tracks:** {len(tracks)}\n")
-            if tracks:
-                avg_conf = sum(t.confidence for t in tracks) / len(tracks)
-                min_conf = min(t.confidence for t in tracks)
-                max_conf = max(t.confidence for t in tracks)
-                f.write(f"- **Average Confidence:** {avg_conf:.1f}%\n")
-                f.write(f"- **Confidence Range:** {min_conf:.1f}% - {max_conf:.1f}%\n")
-            
-            f.write("\n## Tracks\n\n")
+            f.write("\n## Tracklist\n\n")
             
             # Write tracks
-            for track in tracks:
-                f.write(f"{track.markdown_line}\n")
-                
+            for i, track in enumerate(self.tracks, 1):
+                f.write(f"{i}. **{track.time_in_mix}** - {track.artist} - {track.song_name}")
+                if track.confidence < 80:
+                    f.write(f" _(Confidence: {track.confidence:.0f}%)_")
+                f.write("\n")
+        
         logger.info(f"Saved Markdown tracklist to: {output_file}")
         return output_file
     
-    def save_m3u(self, tracks: List[Track], output_dir: Path) -> Path:
+    def _save_m3u(self) -> Path:
         """Save tracks as M3U playlist."""
-        output_dir.mkdir(exist_ok=True)
-        output_file = output_dir / self._format_filename('m3u')
+        output_file = self.output_dir / self._format_filename('m3u')
         
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write("#EXTM3U\n")
             
-            # Write title comment
-            f.write(f"#PLAYLIST:{self.mix_info.get('title', 'Tracklist')}\n")
-            if 'artist' in self.mix_info:
-                f.write(f"#EXTALB:{self.mix_info['artist']}\n")
-            if 'date' in self.mix_info:
-                f.write(f"#EXTGENRE:DJ Mix - {self.mix_info['date']}\n")
-            
-            # Write tracks
-            for track in tracks:
-                f.write(f"{track.m3u_line}\n")
-                
+            for track in self.tracks:
+                duration = getattr(track, 'duration', -1)
+                f.write(f"#EXTINF:{duration},{track.artist} - {track.song_name}\n")
+                # Note: Since we don't have actual file paths, we add a comment with the time in mix
+                f.write(f"# Time in mix: {track.time_in_mix}\n")
+        
         logger.info(f"Saved M3U playlist to: {output_file}")
         return output_file

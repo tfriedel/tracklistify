@@ -68,28 +68,31 @@ tracklistify https://youtube.com/watch?v=example
 - `-s, --segment-length`: Length of analysis segments in seconds (default: 30)
 - `-v, --verbose`: Enable verbose output
 
-### Configuration
+## Configuration
 
-Configure Tracklistify through environment variables in `.env`:
+The application uses environment variables for configuration. Create a `.env` file in the project root:
 
-#### ACRCloud Settings
-- `ACRCLOUD_ACCESS_KEY`: Your ACRCloud access key
-- `ACRCLOUD_ACCESS_SECRET`: Your ACRCloud access secret
-- `ACRCLOUD_HOST`: ACRCloud API endpoint
-- `ACRCLOUD_TIMEOUT`: API request timeout (seconds)
+```env
+# ACRCloud API Credentials
+ACR_ACCESS_KEY=your_access_key
+ACR_ACCESS_SECRET=your_access_secret
+ACR_HOST=your_host
+ACR_TIMEOUT=10
 
-#### Track Identification
-- `MIN_CONFIDENCE`: Minimum confidence score (0-100)
-- `TIME_THRESHOLD`: Time window for merging duplicates (seconds)
-- `MIN_TRACK_LENGTH`: Minimum track length (seconds)
-- `MAX_DUPLICATES`: Maximum allowed duplicates
-- `SEGMENT_LENGTH`: Analysis segment length (seconds)
+# Application Settings
+SEGMENT_LENGTH=60  # Length of each analysis segment in seconds
+OUTPUT_FORMAT=json
+VERBOSE=false
 
-#### Application Settings
-- `VERBOSE`: Enable detailed logging
-- `OUTPUT_FORMAT`: Output format (json)
-- `CACHE_ENABLED`: Enable result caching
-- `CACHE_DURATION`: Cache duration (seconds)
+# API Rate Limiting
+MAX_REQUESTS_PER_MINUTE=60
+```
+
+### Configuration Parameters
+
+- `SEGMENT_LENGTH`: Length of each analysis segment in seconds (default: 60)
+  - Shorter segments (30-60s) provide more accurate track timing
+  - Longer segments (120s+) reduce API calls but may miss short tracks
 
 ## Output
 

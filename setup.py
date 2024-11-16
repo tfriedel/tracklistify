@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="tracklistify",
-    version="0.3.4",
+    version="0.3.6",
     packages=find_packages(),
     install_requires=[
         "pydub>=0.25.1",
@@ -22,7 +22,7 @@ setup(
         ],
     },
     author="Tracklistify Team",
-    description="🎵 Automatically identify and catalog tracks from DJ mixes, live streams, and audio files",
+    description="Automatically identify and catalog tracks from DJ mixes and audio streams",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/tracklistify",
