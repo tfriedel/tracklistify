@@ -6,12 +6,15 @@ from setuptools import setup, find_packages
 
 setup(
     name="tracklistify",
-    version="0.2.0",
+    version="0.3.4",
     packages=find_packages(),
     install_requires=[
-        "acrcloud>=1.0.0",
+        "pydub>=0.25.1",
+        "pyacrcloud>=1.0.7",
+        "yt-dlp>=2023.7.6",
+        "requests>=2.31.0",
+        "configparser>=5.3.0",
         "python-dotenv>=1.0.0",
-        "yt-dlp>=2023.10.13",
     ],
     entry_points={
         "console_scripts": [
@@ -19,7 +22,7 @@ setup(
         ],
     },
     author="Tracklistify Team",
-    description="A tool for identifying tracks in DJ mixes and audio files",
+    description="🎵 Automatically identify and catalog tracks from DJ mixes, live streams, and audio files",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/tracklistify",
@@ -31,6 +34,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Topic :: Multimedia :: Sound/Audio :: Analysis",
+        "Topic :: Multimedia :: Sound/Audio :: Conversion",
     ],
     python_requires=">=3.7",
 )

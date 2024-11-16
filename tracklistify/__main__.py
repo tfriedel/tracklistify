@@ -14,6 +14,7 @@ from .logger import logger
 from .track import Track, TrackMatcher
 from .downloader import DownloaderFactory
 from .output import TracklistOutput
+from .validation import validate_and_clean_url, is_valid_url, is_youtube_url
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
@@ -145,53 +146,56 @@ def main():
     """Main entry point."""
     args = parse_args()
     
-    # Update config with command line arguments
-    if args.segment_length:
-        config.track.segment_length = args.segment_length
+    # Set verbose logging if requested
     if args.verbose:
-        config.app.verbose = True
+        logger.setLevel('DEBUG')
+        logger.debug("Verbose logging enabled")
     
-    # Process input
+    # Validate and clean input URL/path
     input_path = args.input
-    if input_path.startswith(('http://', 'https://')):
-        # Download from URL
-        downloader = DownloaderFactory.create_downloader(input_path)
-        if not downloader:
-            logger.error("Unsupported URL format")
-            return
-            
-        input_path = downloader.download(input_path)
-        if not input_path:
-            logger.error("Download failed")
-            return
+    if '://' in input_path:  # Looks like a URL
+        cleaned_url = validate_and_clean_url(input_path)
+        if not cleaned_url:
+            logger.error(f"Invalid URL: {input_path}")
+            return 1
+        input_path = cleaned_url
+        logger.debug(f"Cleaned URL: {input_path}")
     
     # Get mix information
     mix_info = get_mix_info(input_path)
+    if not mix_info:
+        logger.error("Failed to get mix information")
+        return 1
+    
+    # Download if URL
+    if is_youtube_url(input_path):
+        logger.info("Downloading YouTube video...")
+        downloader = DownloaderFactory.create_downloader('youtube')
+        audio_path = downloader.download(input_path)
+        if not audio_path:
+            logger.error("Failed to download audio")
+            return 1
+    else:
+        audio_path = input_path
     
     # Identify tracks
-    tracks = identify_tracks(input_path)
+    tracks = identify_tracks(audio_path)
     if not tracks:
         logger.error("No tracks identified")
-        return
+        return 1
     
-    # Save results
-    output = TracklistOutput(mix_info)
-    output_dir = Path('tracklists')
+    # Generate output
+    output = TracklistOutput(tracks, mix_info)
+    if args.formats == 'all':
+        formats = ['json', 'markdown', 'm3u']
+    else:
+        formats = [args.formats]
     
-    if args.formats in ['json', 'all']:
-        output.save_json(tracks, output_dir)
-    if args.formats in ['markdown', 'all']:
-        output.save_markdown(tracks, output_dir)
-    if args.formats in ['m3u', 'all']:
-        output.save_m3u(tracks, output_dir)
+    for fmt in formats:
+        output.save(fmt)
     
-    # Display results
-    logger.info(f"\nIdentified {len(tracks)} tracks:\n")
-    for track in tracks:
-        logger.info(f"Time: {track.time_in_mix}")
-        logger.info(f"Track: {track.song_name}")
-        logger.info(f"Artist: {track.artist}")
-        logger.info(f"Confidence: {track.confidence:.0f}%\n")
+    logger.info(f"Found {len(tracks)} tracks")
+    return 0
 
 if __name__ == '__main__':
     main()

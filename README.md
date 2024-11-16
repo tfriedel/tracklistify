@@ -1,6 +1,14 @@
 # Tracklistify
 
-A powerful tool for identifying tracks in DJ mixes, live streams, and audio files.
+🎵 A powerful DJ mix track identification tool that helps you discover and catalog tracks from mixes, live streams, and audio files.
+
+## Description
+
+Tracklistify is an intelligent audio analysis tool that automatically identifies tracks in DJ mixes and generates formatted track lists. It uses advanced audio fingerprinting to detect songs, handles overlapping transitions, and exports results in multiple formats (JSON, Markdown, M3U).
+
+## Topics
+
+`audio-analysis` `dj-tools` `music-recognition` `python` `track-identification` `playlist-generation` `audio-fingerprinting` `music-metadata` `tracklist-generator` `mix-analysis` `acrcloud` `audio-processing` `music-tools` `dj-software` `streaming-tools`
 
 ## Features
 

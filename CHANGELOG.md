@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.4] - 2024-01-15
+
+### Added
+- URL validation and cleaning functionality
+- Support for various YouTube URL formats
+- Automatic backslash stripping from URLs
+- URL unescaping for encoded characters
+
+### Changed
+- Improved URL handling in main program
+- Enhanced error messages for invalid URLs
+- Better logging of URL processing steps
+- Cleaner YouTube URL reconstruction
+
+### Fixed
+- Issue with backslashes in URLs
+- Problems with URL-encoded characters
+- Inconsistent YouTube URL formats
+- Invalid URL handling
+
 ## [0.3.3] - 2024-01-15
 
 ### Added
