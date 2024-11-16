@@ -9,6 +9,11 @@ Get started today and elevate your music experience!
 - 🎵 Multi-provider track identification:
   - ACRCloud for accurate mix analysis
   - Spotify for rich metadata enrichment
+  - Shazam audio fingerprinting with advanced features:
+    * Mel-frequency cepstral coefficients (MFCCs)
+    * Spectral centroid analysis
+    * Pre-emphasis filtering
+    * Confidence-based matching
   - Expandable provider system
 - 🌐 Support for online streaming platforms:
   - YouTube

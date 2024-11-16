@@ -1,9 +1,10 @@
 """Provider factory for managing track identification and metadata providers."""
 
 import logging
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, Union
 from .base import TrackIdentificationProvider, MetadataProvider
 from .spotify import SpotifyProvider
+from .shazam import ShazamProvider
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,21 @@ class ProviderFactory:
             if hasattr(provider, 'close'):
                 await provider.close()
 
+def create_provider(provider_type: str) -> Union[TrackIdentificationProvider, MetadataProvider]:
+    """
+    Create a provider instance based on the provider type.
+    
+    Args:
+        provider_type: Type of provider to create
+        
+    Returns:
+        Provider instance
+    """
+    providers = {
+        'spotify': SpotifyProvider,
+        'shazam': ShazamProvider,
+    }
+
 def create_provider_factory(config: Dict) -> ProviderFactory:
     """
     Create and configure a provider factory based on configuration.
@@ -72,6 +88,12 @@ def create_provider_factory(config: Dict) -> ProviderFactory:
         )
         factory.register_metadata_provider('spotify', spotify)
         logger.info("Registered Spotify metadata provider")
+    
+    # Configure Shazam provider if credentials are available
+    if config.get('SHAZAM_API_KEY'):
+        shazam = ShazamProvider(api_key=config['SHAZAM_API_KEY'])
+        factory.register_identification_provider('shazam', shazam)
+        logger.info("Registered Shazam track identification provider")
     
     # Add more providers here as they are implemented
     

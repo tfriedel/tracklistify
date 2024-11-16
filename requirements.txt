@@ -10,3 +10,6 @@ aiohttp==3.9.3
 pytest==8.0.2
 pytest-asyncio==0.23.5
 pytest-cov==4.1.0
+shazamio==0.4.0
+numpy>=1.19.0
+librosa>=0.10.1

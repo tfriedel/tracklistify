@@ -23,6 +23,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - XML export
   - Rekordbox compatible format
 
+## [0.5.0] - 2024-03-22
+### Added
+- Enhanced Shazam integration:
+  - Advanced audio fingerprinting with MFCCs
+  - Spectral centroid analysis
+  - Pre-emphasis filtering
+  - Improved confidence scoring
+  - Detailed audio features extraction
+  - Extended metadata enrichment
+- Audio landmark fingerprinting for track identification
+- Advanced audio processing with librosa
+- Shazam integration using shazamio package
+
 ## [0.4.0] - 2024-03-21
 ### Added
 - Multiple provider support through provider interface
