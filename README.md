@@ -45,7 +45,7 @@ cd tracklistify
 
 2. Install required dependencies:
 ```bash
-pip install pydub acrcloud_sdk_python yt-dlp requests
+pip install -r requirements.txt
 ```
 
 3. Install FFmpeg:
@@ -58,6 +58,15 @@ pip install pydub acrcloud_sdk_python yt-dlp requests
    - Create a free account
    - Create a new project and get your access credentials
 
+5. Set up your environment:
+   - Copy `.env.example` to `.env`
+   - Add your ACRCloud credentials to `.env`:
+     ```ini
+     ACRCLOUD_ACCESS_KEY=your_access_key_here
+     ACRCLOUD_ACCESS_SECRET=your_access_secret_here
+     ACRCLOUD_HOST=identify-eu-west-1.acrcloud.com
+     ACRCLOUD_TIMEOUT=10
+     ```
 
 ## Command Line Usage
 
@@ -65,14 +74,7 @@ The application can be run from the command line with various options and argume
 
 ### Quick Start
 
-1. Initialize configuration:
-```bash
-python tracklistify.py --init-config
-```
-
-2. Edit the configuration file (default: ~/.tracklistify/config.ini) with your ACRCloud credentials.
-
-3. Analyze a mix:
+1. Analyze a mix:
 ```bash
 # Local file
 python tracklistify.py path/to/mix.mp3
@@ -87,9 +89,7 @@ python tracklistify.py https://www.mixcloud.com/example/mix/
 ### Command Line Options
 
 ```
-usage: tracklistify.py [-h] [-o OUTPUT] [-c CONFIG] [-s SEGMENT_LENGTH] [-v]
-                        [--init-config] [--list-formats]
-                        input
+usage: tracklistify.py [-h] [-o OUTPUT] [-s SEGMENT_LENGTH] [-v] input
 
 DJ Mix Track Identifier - Analyze and identify tracks in DJ mixes and live streams.
 
@@ -100,20 +100,54 @@ optional arguments:
   -h, --help           show this help message and exit
   -o OUTPUT, --output OUTPUT
                        Output JSON file path (default: tracklist.json)
-  -c CONFIG, --config CONFIG
-                       Path to configuration file (default: ~/.tracklistify/config.ini)
   -s SEGMENT_LENGTH, --segment-length SEGMENT_LENGTH
                        Length of analysis segments in seconds (default: 30)
   -v, --verbose        Enable verbose output
-  --init-config        Create a new configuration file
-  --list-formats       List supported file formats and platforms
 ```
+
+## Output
+
+The tool saves identified tracks in the `tracklists` directory. Each analysis creates a new JSON file named using the following format:
+```
+[Uploader]-[Title]_YYYYMMDD_HHMMSS.json
+```
+
+Example output file structure:
+```json
+{
+    "mix_info": {
+        "title": "Example Mix",
+        "uploader": "DJ Example",
+        "duration": 3600,
+        "description": "..."
+    },
+    "analysis_date": "2024-02-21 15:30:45",
+    "track_count": 12,
+    "tracks": [
+        {
+            "song_name": "Example Track",
+            "artist": "Example Artist",
+            "time_in_mix": "00:05:30",
+            "confidence": 95
+        }
+    ]
+}
+```
+
+### Track Identification Settings
+
+You can fine-tune the track identification accuracy using the following environment variables:
+
+- `MIN_CONFIDENCE`: Minimum confidence score for track matches (default: 70)
+- `TIME_THRESHOLD`: Time threshold in seconds for merging nearby matches (default: 60)
+- `MIN_TRACK_LENGTH`: Minimum track length in seconds (default: 30)
+- `MAX_DUPLICATES`: Maximum allowed duplicates of the same track (default: 2)
 
 ### Examples
 
-1. Process a local file with custom output location:
+1. Process a local file:
 ```bash
-python tracklistify.py mix.mp3 -o results.json
+python tracklistify.py mix.mp3
 ```
 
 2. Analyze a YouTube mix with verbose output:
@@ -126,55 +160,19 @@ python tracklistify.py https://youtube.com/watch?v=example -v
 python tracklistify.py mix.mp3 -s 45
 ```
 
-4. Use alternative config file:
-```bash
-python tracklistify.py mix.mp3 -c /path/to/config.ini
+## Project Structure
+
 ```
-
-### Configuration File
-
-The configuration file (default: ~/.tracklistify/config.ini) should contain your ACRCloud credentials:
-
-```ini
-[ACRCloud]
-access_key = your_access_key
-access_secret = your_access_secret
-host = identify-eu-west-1.acrcloud.com
-timeout = 10
+tracklistify/
+├── tracklistify.py     # Main application file
+├── requirements.txt    # Project dependencies
+├── CHANGELOG.md       # Version history and changes
+├── .env.example       # Example environment variables
+├── .env              # Your configuration (not tracked in git)
+├── README.md         # Project documentation
+├── tracklists/       # Generated tracklist files
+└── assets/           # Project assets
 ```
-
-### Output Format
-
-The tool generates a JSON file containing the identified tracks. Example output:
-
-```json
-[
-    {
-        "song_name": "Example Track",
-        "artist": "Example Artist",
-        "album": "Example Album",
-        "label": "Example Label",
-        "genres": ["House", "Electronic"],
-        "time_in_mix": "00:05:30",
-        "confidence": 95
-    }
-]
-```
-
-### Exit Codes
-
-- 0: Successful execution
-- 1: Configuration or input error
-- Other: Runtime error
-
-### Troubleshooting
-
-If you encounter issues:
-
-1. Use the `-v` flag for verbose output
-2. Check your configuration file
-3. Ensure input files are in MP3 format
-4. Verify your internet connection for streaming sources
 
 ## Configuration
 

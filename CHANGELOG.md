@@ -1,0 +1,87 @@
+# Changelog
+
+All notable changes to Tracklistify will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+- AI guidelines documentation
+- Changelog tracking
+- Code quality improvements
+
+## [0.2.0] - 2024-02-21
+
+### Added
+- Enhanced track identification algorithm with confidence-based filtering
+- New track merging logic to handle duplicate detections
+- Dedicated tracklists directory for organized output
+- Additional configuration options in .env for fine-tuning:
+  - MIN_CONFIDENCE for match threshold
+  - TIME_THRESHOLD for track merging
+  - MIN_TRACK_LENGTH for filtering
+  - MAX_DUPLICATES for duplicate control
+- Improved JSON output format with detailed track information
+- Better timestamp handling in track identification
+
+### Changed
+- Updated .env.example with new configuration options
+- Improved README documentation with output format examples
+- Enhanced error handling in track identification process
+- Optimized FFmpeg integration
+
+### Fixed
+- Duplicate track detection issues
+- Timestamp accuracy in track listing
+- File naming sanitization
+
+## [0.1.0] - 2024-02-20
+### Added
+- Core track identification functionality
+- Support for YouTube and Mixcloud platforms
+- ACRCloud integration for audio recognition
+- JSON export of track listings
+- Command-line interface
+- Configuration file support
+- Detailed track information retrieval
+- Timestamp tracking
+- Confidence scoring
+- Duplicate detection and merging
+- Error handling and logging
+- Documentation and usage examples
+
+### Technical Features
+- Abstract base class for stream downloaders
+- Factory pattern for platform-specific downloaders
+- Modular architecture for easy platform additions
+- Temporary file management
+- FFmpeg integration
+- Configuration validation
+- Progress tracking
+- Error reporting
+
+## Future Plans
+### Planned Features
+- Support for additional streaming platforms
+- Enhanced duplicate detection algorithms
+- Local audio fingerprinting
+- Batch processing capabilities
+- Web interface
+- Playlist export to various formats
+- BPM detection and matching
+- DJ transition detection
+- Genre classification
+- Improved confidence scoring
+- API rate limiting optimization
+- Caching system for recognized tracks
+
+### Technical Improvements
+- Unit test coverage
+- Performance optimizations
+- Memory usage improvements
+- Error handling enhancements
+- Documentation updates
+- Code refactoring
+- Configuration system improvements
+- Logging system enhancements

@@ -10,8 +10,11 @@ import tempfile
 import urllib.parse
 import argparse
 import sys
-import configparser
+from dotenv import load_dotenv
 from abc import ABC, abstractmethod
+
+# Load environment variables
+load_dotenv()
 
 class StreamDownloader(ABC):
     """Abstract base class for stream downloaders"""
@@ -25,28 +28,72 @@ class StreamDownloader(ABC):
         """Get stream metadata"""
         pass
 
+def get_ffmpeg_path():
+    """Get the FFmpeg executable path"""
+    try:
+        # Try to get FFmpeg path using 'which' command
+        import subprocess
+        result = subprocess.run(['which', 'ffmpeg'], capture_output=True, text=True)
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    
+    # Check common locations
+    common_paths = [
+        '/opt/homebrew/bin/ffmpeg',  # macOS Homebrew
+        '/usr/local/bin/ffmpeg',     # macOS/Linux
+        '/usr/bin/ffmpeg',           # Linux
+    ]
+    
+    for path in common_paths:
+        if os.path.exists(path):
+            return path
+    
+    return 'ffmpeg'  # Default to system PATH
+
 class YoutubeDownloader(StreamDownloader):
     def __init__(self):
+        ffmpeg_path = get_ffmpeg_path()
         self.ydl_opts = {
-            'format': 'bestaudio/best',
+            'format': 'bestaudio',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192',
             }],
+            'ffmpeg_location': ffmpeg_path,
             'quiet': True,
-            'no_warnings': True
+            'no_warnings': True,
+            'outtmpl': '%(title)s.%(ext)s',
+            'prefer_ffmpeg': True,
+            'keepvideo': False
         }
+        print(f"Using FFmpeg from: {ffmpeg_path}")
 
     def download(self, url):
-        with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
-            temp_path = tmp_file.name
-            
-        self.ydl_opts['outtmpl'] = temp_path
-        with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-            ydl.download([url])
-            
-        return temp_path
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.%(ext)s', delete=False) as tmp_file:
+                temp_path = tmp_file.name
+
+            self.ydl_opts['outtmpl'] = temp_path
+            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                downloaded_file = ydl.prepare_filename(info)
+                
+                # Convert the file extension to .mp3 since we're extracting audio
+                mp3_path = os.path.splitext(downloaded_file)[0] + '.mp3'
+                if os.path.exists(mp3_path):
+                    return mp3_path
+                elif os.path.exists(downloaded_file):
+                    return downloaded_file
+                else:
+                    raise Exception("Downloaded file not found")
+
+        except Exception as e:
+            print(f"Error downloading: {str(e)}")
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
 
     def get_stream_info(self, url):
         with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
@@ -107,7 +154,9 @@ class MixTrackIdentifier:
             'timeout': int(config.get('timeout', 10))
         }
         self.recognizer = ACRCloudRecognizer(self.config)
-  
+        self.tracklists_dir = os.path.join(os.getcwd(), 'tracklists')
+        os.makedirs(self.tracklists_dir, exist_ok=True)
+
     def split_mix(self, mix_path, segment_length=30):
         """Split the mix into segments for analysis"""
         mix_audio = AudioSegment.from_mp3(mix_path)
@@ -204,67 +253,97 @@ class MixTrackIdentifier:
         """Merge nearby matches of the same song"""
         if not results:
             return []
-            
-        merged = []
-        current_match = results[0]
-        
-        for next_match in results[1:]:
-            current_time = sum(x * int(t) for x, t in zip([3600, 60, 1], current_match["time_in_mix"].split(":")))
-            next_time = sum(x * int(t) for x, t in zip([3600, 60, 1], next_match["time_in_mix"].split(":")))
-            
-            if (next_time - current_time <= time_threshold and 
-                next_match["song_name"] == current_match["song_name"]):
-                if next_match["confidence"] > current_match["confidence"]:
-                    current_match["confidence"] = next_match["confidence"]
-            else:
-                merged.append(current_match)
-                current_match = next_match
-                
-        merged.append(current_match)
-        return merged
-    
-    def export_results(self, results, output_path):
-        """Export results to JSON"""
-        with open(output_path, 'w') as f:
-            json.dump(results, f, indent=4)
 
-def create_config_file(config_path):
-    """Create a default configuration file"""
-    config = configparser.ConfigParser()
-    config['ACRCloud'] = {
-        'access_key': 'your_access_key_here',
-        'access_secret': 'your_access_secret_here',
-        'host': 'identify-eu-west-1.acrcloud.com',
-        'timeout': '10'
+        # Sort results by timestamp
+        sorted_results = sorted(results, key=lambda x: x['time_in_mix'])
+        merged = []
+        current = sorted_results[0]
+
+        for next_match in sorted_results[1:]:
+            # Calculate time difference
+            current_time = sum(x * int(t) for x, t in zip([3600, 60, 1], current['time_in_mix'].split(":")))
+            next_time = sum(x * int(t) for x, t in zip([3600, 60, 1], next_match['time_in_mix'].split(":")))
+            time_diff = next_time - current_time
+
+            # If same song and within threshold, update confidence
+            if (current['song_name'] == next_match['song_name'] and 
+                current['artist'] == next_match['artist'] and 
+                time_diff <= time_threshold):
+                # Update confidence with higher value
+                if next_match['confidence'] > current['confidence']:
+                    current['confidence'] = next_match['confidence']
+            else:
+                # Add current match to merged list and move to next
+                if current['confidence'] >= float(os.getenv('MIN_CONFIDENCE', '70')):
+                    merged.append(current)
+                current = next_match
+
+        # Add the last match if confidence is high enough
+        if current['confidence'] >= float(os.getenv('MIN_CONFIDENCE', '70')):
+            merged.append(current)
+
+        return merged
+
+    def _sanitize_filename(self, filename):
+        """Sanitize filename for safe file system usage"""
+        # Remove or replace invalid characters
+        invalid_chars = '<>:"/\\|?*'
+        for char in invalid_chars:
+            filename = filename.replace(char, '_')
+        # Limit length and remove trailing spaces/dots
+        filename = filename.strip('. ')[:200]
+        return filename
+
+    def _get_output_path(self, mix_info):
+        """Generate output path for tracklist"""
+        # Create filename from mix info
+        if isinstance(mix_info, dict):
+            filename = f"{mix_info.get('uploader', 'Unknown')}-{mix_info.get('title', 'Untitled')}"
+        else:
+            filename = os.path.splitext(os.path.basename(mix_info))[0]
+        
+        # Sanitize filename and add timestamp
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        safe_filename = self._sanitize_filename(filename)
+        output_filename = f"{safe_filename}_{timestamp}.json"
+        
+        return os.path.join(self.tracklists_dir, output_filename)
+
+    def export_results(self, results, mix_info):
+        """Export results to JSON with enhanced metadata"""
+        output_path = self._get_output_path(mix_info)
+        
+        # Enhance results with additional metadata
+        output_data = {
+            'mix_info': mix_info if isinstance(mix_info, dict) else {'file': mix_info},
+            'analysis_date': time.strftime("%Y-%m-%d %H:%M:%S"),
+            'track_count': len(results),
+            'tracks': results
+        }
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=4, ensure_ascii=False)
+        
+        return output_path
+
+def load_config():
+    """Load configuration from environment variables"""
+    config = {
+        'access_key': os.getenv('ACRCLOUD_ACCESS_KEY'),
+        'access_secret': os.getenv('ACRCLOUD_ACCESS_SECRET'),
+        'host': os.getenv('ACRCLOUD_HOST', 'identify-eu-west-1.acrcloud.com'),
+        'timeout': int(os.getenv('ACRCLOUD_TIMEOUT', '10'))
     }
     
-    with open(config_path, 'w') as configfile:
-        config.write(configfile)
-    
-    print(f"Created default configuration file at: {config_path}")
-    print("Please edit the file and add your ACRCloud credentials.")
-    sys.exit(1)
-
-def load_config(config_path):
-    """Load configuration from file"""
-    if not os.path.exists(config_path):
-        create_config_file(config_path)
-    
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    
-    if 'ACRCloud' not in config:
-        print("Error: Invalid configuration file format.")
-        sys.exit(1)
-    
-    return dict(config['ACRCloud'])
+    validate_config(config)
+    return config
 
 def validate_config(config):
     """Validate the configuration"""
     required_keys = ['access_key', 'access_secret']
     for key in required_keys:
-        if key not in config or config[key] == f'your_{key}_here':
-            print(f"Error: Please set your {key} in the configuration file.")
+        if not config[key]:
+            print(f"Error: Please set {key.upper()} in your .env file.")
             sys.exit(1)
 
 def main():
@@ -279,93 +358,24 @@ def main():
                     
             It provides detailed track information including:
             - Track name and artist
-            - Timestamp in the mix
-            - Album and label information
-            - Genre tags
-            - Confidence scores
-            """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+            - Timestamp in mix
+            - Confidence score
+        """)
     
-    parser.add_argument(
-        'input',
-        help='Input file path or URL to analyze'
-    )
+    parser.add_argument('input', help='Input file path or URL to analyze')
+    parser.add_argument('-o', '--output', help='Output JSON file path', default='tracklist.json')
+    parser.add_argument('-s', '--segment-length', type=int, default=int(os.getenv('SEGMENT_LENGTH', '30')),
+                      help='Length of analysis segments in seconds')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
     
-    parser.add_argument(
-        '-o', '--output',
-        help='Output JSON file path (default: tracklist.json)',
-        default='tracklist.json'
-    )
-    
-    parser.add_argument(
-        '-c', '--config',
-        help='Path to configuration file (default: ~/.mix-identifier/config.ini)',
-        default=os.path.expanduser('~/.mix-identifier/config.ini')
-    )
-    
-    parser.add_argument(
-        '-s', '--segment-length',
-        help='Length of analysis segments in seconds (default: 30)',
-        type=int,
-        default=30
-    )
-    
-    parser.add_argument(
-        '-v', '--verbose',
-        help='Enable verbose output',
-        action='store_true'
-    )
-    
-    parser.add_argument(
-        '--init-config',
-        help='Create a new configuration file',
-        action='store_true'
-    )
-    
-    formats = parser.add_argument_group('Supported Formats')
-    formats.add_argument(
-        '--list-formats',
-        help='List supported file formats and platforms',
-        action='store_true'
-    )
-    
-    # Parse arguments
     args = parser.parse_args()
     
-    # Handle special commands
-    if args.list_formats:
-        print("""
-            Supported Formats and Platforms:
-
-            Local Files:
-            - MP3 audio files
-
-            Streaming Platforms:
-            - YouTube (youtube.com, youtu.be)
-            - Mixcloud (mixcloud.com)
-
-            File format requirements:
-            - Local files must be in MP3 format
-            - Streams will be automatically converted
-        """)
-        sys.exit(0)
-    
-    # Create config directory if it doesn't exist
-    os.makedirs(os.path.dirname(args.config), exist_ok=True)
-    
-    # Handle config initialization
-    if args.init_config:
-        create_config_file(args.config)
-        sys.exit(0)
-    
-    # Load and validate configuration
-    config = load_config(args.config)
-    validate_config(config)
+    # Load configuration from environment
+    config = load_config()
     
     # Initialize identifier
     identifier = MixTrackIdentifier(config)
-    
+
     try:
         # Process input
         if args.verbose:
@@ -381,10 +391,10 @@ def main():
             results = identifier.identify_tracks(args.input, args.segment_length)
         
         # Export results
-        identifier.export_results(results, args.output)
+        output_path = identifier.export_results(results, args.input)
         
         if args.verbose:
-            print(f"\nProcessing complete. Results saved to: {args.output}")
+            print(f"\nProcessing complete. Results saved to: {output_path}")
             print(f"\nIdentified {len(results)} tracks:")
             for track in results:
                 print(f"\nTime: {track['time_in_mix']}")
@@ -392,7 +402,7 @@ def main():
                 print(f"Artist: {track['artist']}")
                 print(f"Confidence: {track['confidence']}%")
         else:
-            print(f"\nIdentified {len(results)} tracks. Results saved to: {args.output}")
+            print(f"\nIdentified {len(results)} tracks. Results saved to: {output_path}")
     
     except Exception as e:
         print(f"Error: {str(e)}")
