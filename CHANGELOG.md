@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.1] - 2024-01-15
+
+### Added
+- Enhanced track identification verbosity with detailed progress and status logging
+- Comprehensive analysis summary in output files including confidence statistics
+- Additional metadata in M3U playlists (artist and date information)
+
+### Changed
+- Modified track confidence handling to keep all tracks with confidence > 0
+- Updated tracklist filename format to `[YYYYMMDD] Artist - Description.extension`
+- Improved track merging process with more detailed debug logging
+- Enhanced markdown output with analysis statistics section
+
+### Fixed
+- Filename sanitization to preserve spaces and valid punctuation
+- Date format handling in filenames for consistency
+
 ## [0.3.0] - 2024-02-21
 
 ### Added

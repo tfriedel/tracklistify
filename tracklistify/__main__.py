@@ -13,6 +13,7 @@ from .config import config
 from .logger import logger
 from .track import Track, TrackMatcher
 from .downloader import DownloaderFactory
+from .output import TracklistOutput
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
@@ -32,6 +33,12 @@ def parse_args() -> argparse.Namespace:
         '-v', '--verbose',
         action='store_true',
         help='Enable verbose output'
+    )
+    parser.add_argument(
+        '-f', '--formats',
+        choices=['json', 'markdown', 'm3u', 'all'],
+        default='all',
+        help='Output format(s) to generate'
     )
     return parser.parse_args()
 
@@ -63,14 +70,22 @@ def identify_tracks(audio_path: str) -> Optional[List[Track]]:
             
         total_length = len(audio_data)
         segment_length = config.track.segment_length * 1000  # Convert to bytes
+        total_segments = total_length // segment_length
         
-        for start in range(0, total_length, segment_length):
+        logger.info(f"Starting track identification...")
+        logger.info(f"Total segments to analyze: {total_segments}")
+        logger.info(f"Segment length: {config.track.segment_length} seconds")
+        
+        identified_count = 0
+        for i, start in enumerate(range(0, total_length, segment_length)):
             segment = audio_data[start:start + segment_length]
+            logger.info(f"Analyzing segment {i+1}/{total_segments} at {str(datetime.fromtimestamp(start // 1000).strftime('%H:%M:%S'))}...")
+            
             result = recognizer.recognize_by_filebuffer(segment, 0)
             
             try:
                 data = json.loads(result)
-                if data['status']['code'] == 0:
+                if data['status']['code'] == 0 and data['metadata'].get('music'):
                     for music in data['metadata']['music']:
                         track = Track(
                             song_name=music['title'],
@@ -79,46 +94,52 @@ def identify_tracks(audio_path: str) -> Optional[List[Track]]:
                             confidence=float(music['score'])
                         )
                         matcher.add_track(track)
+                        identified_count += 1
+                        logger.info(f"Found track: {track.song_name} by {track.artist} (Confidence: {track.confidence:.1f}%)")
+                else:
+                    logger.debug(f"No music detected in segment {i+1}")
             except (json.JSONDecodeError, KeyError) as e:
                 logger.error(f"Failed to parse ACRCloud response: {str(e)}")
                 continue
                 
-        return matcher.merge_nearby_tracks()
+        logger.info(f"\nTrack identification completed:")
+        logger.info(f"- Segments analyzed: {total_segments}")
+        logger.info(f"- Raw tracks identified: {identified_count}")
+        
+        merged_tracks = matcher.merge_nearby_tracks()
+        logger.info(f"- Final unique tracks after merging: {len(merged_tracks)}")
+        
+        return merged_tracks
         
     except Exception as e:
         logger.error(f"Track identification failed: {str(e)}")
         return None
 
-def save_tracklist(tracks: List[Track], input_path: str):
-    """Save identified tracks to JSON file."""
-    output_dir = Path('tracklists')
-    output_dir.mkdir(exist_ok=True)
+def get_mix_info(input_path: str) -> dict:
+    """Extract mix information from input."""
+    if input_path.startswith(('http://', 'https://')):
+        # For URLs, try to get info from the downloader
+        downloader = DownloaderFactory.create_downloader(input_path)
+        if downloader:
+            try:
+                with yt_dlp.YoutubeDL() as ydl:
+                    info = ydl.extract_info(input_path, download=False)
+                    return {
+                        'title': info.get('title', ''),
+                        'artist': info.get('uploader', ''),
+                        'date': datetime.now().strftime('%Y-%m-%d'),
+                        'description': info.get('description', ''),
+                        'duration': info.get('duration', 0)
+                    }
+            except Exception as e:
+                logger.error(f"Failed to get mix info: {str(e)}")
     
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = Path(input_path).stem
-    output_file = output_dir / f"{filename}_{timestamp}.json"
-    
-    data = {
-        'mix_info': {
-            'title': filename,
-            'analysis_date': datetime.now().isoformat(),
-        },
-        'track_count': len(tracks),
-        'tracks': [
-            {
-                'song_name': track.song_name,
-                'artist': track.artist,
-                'time_in_mix': track.time_in_mix,
-                'confidence': track.confidence
-            }
-            for track in tracks
-        ]
+    # For local files or fallback
+    path = Path(input_path)
+    return {
+        'title': path.stem,
+        'date': datetime.now().strftime('%Y-%m-%d')
     }
-    
-    with open(output_file, 'w') as f:
-        json.dump(data, f, indent=4)
-        
-    logger.info(f"\nResults saved to: {output_file}")
 
 def main():
     """Main entry point."""
@@ -144,14 +165,25 @@ def main():
             logger.error("Download failed")
             return
     
+    # Get mix information
+    mix_info = get_mix_info(input_path)
+    
     # Identify tracks
     tracks = identify_tracks(input_path)
     if not tracks:
         logger.error("No tracks identified")
         return
-        
+    
     # Save results
-    save_tracklist(tracks, input_path)
+    output = TracklistOutput(mix_info)
+    output_dir = Path('tracklists')
+    
+    if args.formats in ['json', 'all']:
+        output.save_json(tracks, output_dir)
+    if args.formats in ['markdown', 'all']:
+        output.save_markdown(tracks, output_dir)
+    if args.formats in ['m3u', 'all']:
+        output.save_m3u(tracks, output_dir)
     
     # Display results
     logger.info(f"\nIdentified {len(tracks)} tracks:\n")

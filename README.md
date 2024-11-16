@@ -105,6 +105,72 @@ Results are saved in the `tracklists` directory as JSON files:
 }
 ```
 
+## Output Formats
+
+Tracklistify supports multiple output formats for the identified tracks:
+
+### JSON Output
+The JSON output includes comprehensive track information and analysis statistics:
+```json
+{
+    "mix_info": {
+        "title": "Example Mix",
+        "artist": "DJ Example",
+        "date": "2024-01-15"
+    },
+    "analysis_info": {
+        "track_count": 25,
+        "average_confidence": 85.5,
+        "min_confidence": 15.2,
+        "max_confidence": 98.7
+    },
+    "tracks": [
+        {
+            "song_name": "Example Track",
+            "artist": "Example Artist",
+            "time_in_mix": "00:05:30",
+            "confidence": 92.5
+        }
+    ]
+}
+```
+
+### Markdown Output
+The markdown output provides a human-readable format with analysis information:
+```markdown
+# Example Mix
+
+**Artist:** DJ Example
+**Date:** 2024-01-15
+
+## Analysis Info
+- **Total Tracks:** 25
+- **Average Confidence:** 85.5%
+- **Confidence Range:** 15.2% - 98.7%
+
+## Tracks
+- [00:05:30] **Example Artist** - Example Track (92.5%)
+```
+
+### M3U Playlist
+The M3U output includes extended playlist metadata:
+```m3u
+#EXTM3U
+#PLAYLIST:Example Mix
+#EXTALB:DJ Example
+#EXTGENRE:DJ Mix - 2024-01-15
+#EXTINF:-1,Example Artist - Example Track
+```
+
+## File Naming
+
+Output files follow the format: `[YYYYMMDD] Artist - Description.extension`
+
+Examples:
+- `[20240115] DJ Example - Summer Mix 2024.json`
+- `[20240115] DJ Example - Summer Mix 2024.md`
+- `[20240115] DJ Example - Summer Mix 2024.m3u`
+
 ## Project Structure
 
 ```
