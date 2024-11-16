@@ -33,6 +33,12 @@ class OutputConfig:
     format: str = 'json'
     directory: str = 'tracklists'
 
+@dataclass
+class AppConfig:
+    """Application-wide settings."""
+    verbose: bool = False
+    max_requests_per_minute: int = 60
+
 class Config:
     """Global configuration handler."""
     
@@ -51,63 +57,50 @@ class Config:
         # Output configuration
         self.output = self._load_output_config()
         
-        # General settings
-        self.verbose = self._get_bool('VERBOSE', False)
-
+        # App configuration
+        self.app = self._load_app_config()
+    
+    def _load_track_config(self) -> TrackConfig:
+        """Load track identification configuration."""
+        return TrackConfig(
+            segment_length=int(os.getenv('SEGMENT_LENGTH', '60')),
+            min_confidence=int(os.getenv('MIN_CONFIDENCE', '0')),
+            time_threshold=int(os.getenv('TIME_THRESHOLD', '60')),
+            max_duplicates=int(os.getenv('MAX_DUPLICATES', '2'))
+        )
+    
     def _load_acrcloud_config(self) -> ACRCloudConfig:
-        """Load ACRCloud configuration from environment."""
+        """Load ACRCloud API configuration."""
         access_key = os.getenv('ACR_ACCESS_KEY')
-        if not access_key:
-            raise ConfigError("Missing required configuration: ACR_ACCESS_KEY")
-            
         access_secret = os.getenv('ACR_ACCESS_SECRET')
-        if not access_secret:
-            raise ConfigError("Missing required configuration: ACR_ACCESS_SECRET")
-            
+        
+        if not access_key or not access_secret:
+            raise ConfigError("ACRCloud credentials not found in environment")
+        
         return ACRCloudConfig(
             access_key=access_key,
             access_secret=access_secret,
             host=os.getenv('ACR_HOST', 'identify-eu-west-1.acrcloud.com'),
-            timeout=self._get_int('ACR_TIMEOUT', 10)
+            timeout=int(os.getenv('ACR_TIMEOUT', '10'))
         )
-
-    def _load_track_config(self) -> TrackConfig:
-        """Load track configuration from environment."""
-        try:
-            segment_length = self._get_int('SEGMENT_LENGTH', 60)
-            if segment_length <= 0:
-                raise ValueError("Segment length must be positive")
-        except ValueError as e:
-            raise ConfigError(f"Invalid segment length: {str(e)}")
-            
-        return TrackConfig(
-            segment_length=segment_length,
-            min_confidence=self._get_int('MIN_CONFIDENCE', 0),
-            time_threshold=self._get_int('TIME_THRESHOLD', 60),
-            max_duplicates=self._get_int('MAX_DUPLICATES', 2)
-        )
-
+    
     def _load_output_config(self) -> OutputConfig:
-        """Load output configuration from environment."""
+        """Load output configuration."""
         format = os.getenv('OUTPUT_FORMAT', 'json').lower()
         if format not in self.VALID_OUTPUT_FORMATS:
-            raise ConfigError(f"Invalid output format. Must be one of: {', '.join(self.VALID_OUTPUT_FORMATS)}")
-            
+            raise ConfigError(f"Invalid output format: {format}")
+        
         return OutputConfig(
             format=format,
             directory=os.getenv('OUTPUT_DIR', 'tracklists')
         )
-
-    def _get_bool(self, key: str, default: bool = False) -> bool:
-        """Get boolean value from environment variable."""
-        return os.getenv(key, str(default)).lower() == 'true'
-
-    def _get_int(self, key: str, default: int) -> int:
-        """Get integer value from environment variable."""
-        try:
-            return int(os.getenv(key, str(default)))
-        except ValueError:
-            raise ConfigError(f"Invalid value for {key}: must be an integer")
+        
+    def _load_app_config(self) -> AppConfig:
+        """Load application-wide settings."""
+        return AppConfig(
+            verbose=os.getenv('VERBOSE', 'false').lower() == 'true',
+            max_requests_per_minute=int(os.getenv('MAX_REQUESTS_PER_MINUTE', '60'))
+        )
 
 # Global configuration instance - lazy loaded
 _config_instance = None
