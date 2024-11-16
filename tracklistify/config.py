@@ -38,6 +38,14 @@ class AppConfig:
     """Application-wide settings."""
     verbose: bool = False
     max_requests_per_minute: int = 60
+    rate_limit_enabled: bool = True
+
+@dataclass
+class CacheConfig:
+    """Cache configuration."""
+    enabled: bool = True
+    directory: str = '.cache'
+    duration: int = 86400  # 24 hours in seconds
 
 class Config:
     """Global configuration handler."""
@@ -59,6 +67,9 @@ class Config:
         
         # App configuration
         self.app = self._load_app_config()
+        
+        # Cache configuration
+        self.cache = self._load_cache_config()
     
     def _load_track_config(self) -> TrackConfig:
         """Load track identification configuration."""
@@ -99,7 +110,16 @@ class Config:
         """Load application-wide settings."""
         return AppConfig(
             verbose=os.getenv('VERBOSE', 'false').lower() == 'true',
-            max_requests_per_minute=int(os.getenv('MAX_REQUESTS_PER_MINUTE', '60'))
+            max_requests_per_minute=int(os.getenv('MAX_REQUESTS_PER_MINUTE', '60')),
+            rate_limit_enabled=os.getenv('RATE_LIMIT_ENABLED', 'true').lower() == 'true'
+        )
+        
+    def _load_cache_config(self) -> CacheConfig:
+        """Load cache configuration."""
+        return CacheConfig(
+            enabled=os.getenv('CACHE_ENABLED', 'true').lower() == 'true',
+            directory=os.getenv('CACHE_DIR', '.cache'),
+            duration=int(os.getenv('CACHE_DURATION', '86400'))
         )
 
 # Global configuration instance - lazy loaded

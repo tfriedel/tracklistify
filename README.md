@@ -17,6 +17,11 @@ Get started today and elevate your music experience!
 - 📝 JSON export of results
 - 🔄 Smart duplicate detection and merging
 - 🎚️ Configurable analysis parameters
+- 💨 High-performance processing:
+  - Intelligent caching system
+  - Rate limiting protection
+  - Memory-efficient chunk processing
+  - Configurable optimization settings
 
 ## Installation
 
@@ -77,20 +82,63 @@ ACR_ACCESS_SECRET=your_access_secret
 ACR_HOST=your_host
 ACR_TIMEOUT=10
 
-# Application Settings
-SEGMENT_LENGTH=60  # Length of each analysis segment in seconds
-OUTPUT_FORMAT=json
-VERBOSE=false
+# Track Identification Settings
+SEGMENT_LENGTH=30
+MIN_CONFIDENCE=70
+TIME_THRESHOLD=60
+MAX_DUPLICATES=2
 
-# API Rate Limiting
+# Output Settings
+OUTPUT_FORMAT=json
+OUTPUT_DIR=tracklists
+
+# Application Settings
+VERBOSE=false
 MAX_REQUESTS_PER_MINUTE=60
+RATE_LIMIT_ENABLED=true
+
+# Cache Settings
+CACHE_ENABLED=true
+CACHE_DIR=.cache
+CACHE_DURATION=86400  # 24 hours in seconds
 ```
 
 ### Configuration Parameters
 
-- `SEGMENT_LENGTH`: Length of each analysis segment in seconds (default: 60)
+#### Track Identification
+- `SEGMENT_LENGTH`: Length of each analysis segment in seconds (default: 30)
   - Shorter segments (30-60s) provide more accurate track timing
   - Longer segments (120s+) reduce API calls but may miss short tracks
+- `MIN_CONFIDENCE`: Minimum confidence score for track matches (default: 70)
+- `TIME_THRESHOLD`: Time threshold for merging similar tracks (default: 60)
+- `MAX_DUPLICATES`: Maximum allowed duplicate tracks (default: 2)
+
+#### Performance Optimization
+- `CACHE_ENABLED`: Enable/disable response caching (default: true)
+- `CACHE_DIR`: Directory for cached responses (default: .cache)
+- `CACHE_DURATION`: Cache expiration in seconds (default: 86400)
+- `RATE_LIMIT_ENABLED`: Enable/disable rate limiting (default: true)
+- `MAX_REQUESTS_PER_MINUTE`: Maximum API requests per minute (default: 60)
+
+## Performance Features
+
+### Caching System
+- File-based caching of API responses
+- Configurable cache duration
+- Automatic cache expiration
+- Segment-level caching for track identification
+
+### Rate Limiting
+- Token bucket algorithm for API request management
+- Configurable requests per minute
+- Thread-safe implementation
+- Optional timeout for token acquisition
+
+### Memory Optimization
+- Chunk-based audio file reading
+- Segment-level processing
+- Efficient memory management
+- Reduced memory footprint
 
 ## Output
 

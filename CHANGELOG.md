@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- File-based caching system for API responses
+- Token bucket rate limiter for API calls
+- Memory-efficient chunk-based audio processing
+- Cache configuration options:
+  - CACHE_ENABLED for toggling caching
+  - CACHE_DIR for cache location
+  - CACHE_DURATION for cache expiration
+- Rate limiting configuration:
+  - RATE_LIMIT_ENABLED for toggling rate limiting
+  - MAX_REQUESTS_PER_MINUTE for API throttling
 - Comprehensive test suite for track identification
 - Input validation for track metadata
 - Error handling for invalid audio files
@@ -18,16 +28,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality improvements
 
 ### Changed
+- Optimized memory usage during audio processing
 - Improved Track class with strict validation
 - Enhanced TrackMatcher with better error handling
 - Refined confidence threshold handling
 - More robust MP3 format validation
+- Updated environment variable structure
+- Enhanced error handling and logging
+- Improved configuration management
 
 ### Fixed
 - Track timestamp ordering
 - Confidence threshold validation
 - Track metadata validation
 - Audio file format validation
+- Memory leaks in audio processing
+- API rate limiting issues
 
 ## [0.3.6] - 2024-03-19
 
