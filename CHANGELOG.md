@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changelog tracking
 - Code quality improvements
 
+## [0.3.2] - 2024-01-15
+
+### Added
+- Enhanced logging system with colored console output
+- Configurable log file output with timestamps
+- Debug-level logging for development
+- Custom log formatters for both console and file output
+
+### Changed
+- Updated logger module with comprehensive configuration options
+- Improved log message formatting
+- Added color-coding for different log levels
+- Enhanced logging verbosity control
+
 ## [0.3.1] - 2024-01-15
 
 ### Added

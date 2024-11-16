@@ -188,6 +188,53 @@ tracklistify/
 └── README.md           # Documentation
 ```
 
+## Logging
+
+Tracklistify uses a comprehensive logging system with both console and file output:
+
+### Console Output
+- Colored log levels for better visibility:
+  - DEBUG: Cyan
+  - INFO: Green
+  - WARNING: Yellow
+  - ERROR: Red
+  - CRITICAL: Magenta
+- Configurable verbosity level
+- Clean format focused on essential information
+
+### File Logging
+- Detailed logs with timestamps
+- Automatic log file creation with date-time stamps
+- Debug-level logging for development and troubleshooting
+- Log files stored in `logs` directory
+
+### Usage Example
+```python
+from tracklistify.logger import logger, set_verbose, add_file_logging
+from pathlib import Path
+
+# Enable verbose logging
+set_verbose(True)
+
+# Add file logging
+add_file_logging(Path('logs'))
+
+# Log messages
+logger.debug("Detailed debug information")
+logger.info("General information")
+logger.warning("Warning message")
+logger.error("Error message")
+```
+
+### Log File Format
+```
+2024-01-15 14:30:45 [INFO] Starting track identification...
+2024-01-15 14:30:45 [DEBUG] Analyzing segment 1/120 at 00:00:00
+2024-01-15 14:30:46 [INFO] Found track: Example Track by Artist (92.5%)
+2024-01-15 14:30:46 [WARNING] Low confidence track detected (45.2%)
+2024-01-15 14:30:47 [ERROR] Failed to parse ACRCloud response: Invalid JSON
+```
+
 ## Development
 
 1. Install development dependencies:
@@ -199,12 +246,6 @@ pip install -e ".[dev]"
 ```bash
 pytest
 ```
-
-## Logging
-
-Logs are stored in the `logs` directory:
-- Console output: Basic information and results
-- File logs: Detailed debugging information
 
 ## Contributing
 
