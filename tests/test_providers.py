@@ -12,6 +12,13 @@ from tracklistify.providers.base import (
 )
 from tracklistify.providers.spotify import SpotifyProvider
 from tracklistify.providers.factory import ProviderFactory, create_provider_factory
+from tests.conftest import (
+    TEST_TRACK_TITLE,
+    TEST_TRACK_ARTIST,
+    TEST_TRACK_ALBUM,
+    TEST_TRACK_DURATION,
+    TEST_TRACK_CONFIDENCE
+)
 
 @pytest.fixture
 def spotify_config():
@@ -29,14 +36,14 @@ def mock_spotify_response():
             "items": [
                 {
                     "id": "test_id",
-                    "name": "Test Track",
-                    "artists": [{"name": "Test Artist"}],
+                    "name": TEST_TRACK_TITLE,
+                    "artists": [{"name": TEST_TRACK_ARTIST}],
                     "album": {
-                        "name": "Test Album",
+                        "name": TEST_TRACK_ALBUM,
                         "release_date": "2024-01-01"
                     },
-                    "duration_ms": 180000,
-                    "popularity": 80,
+                    "duration_ms": int(TEST_TRACK_DURATION * 1000),
+                    "popularity": int(TEST_TRACK_CONFIDENCE),
                     "preview_url": "https://example.com/preview",
                     "external_urls": {"spotify": "https://example.com/track"}
                 }
@@ -49,14 +56,14 @@ def mock_spotify_track():
     """Mock Spotify track details fixture."""
     return {
         "id": "test_id",
-        "name": "Test Track",
-        "artists": [{"name": "Test Artist"}],
+        "name": TEST_TRACK_TITLE,
+        "artists": [{"name": TEST_TRACK_ARTIST}],
         "album": {
-            "name": "Test Album",
+            "name": TEST_TRACK_ALBUM,
             "release_date": "2024-01-01"
         },
-        "duration_ms": 180000,
-        "popularity": 80,
+        "duration_ms": int(TEST_TRACK_DURATION * 1000),
+        "popularity": int(TEST_TRACK_CONFIDENCE),
         "preview_url": "https://example.com/preview",
         "external_urls": {"spotify": "https://example.com/track"}
     }
@@ -65,83 +72,65 @@ def mock_spotify_track():
 def mock_audio_features():
     """Mock Spotify audio features fixture."""
     return {
-        "tempo": 120.5,
+        "id": "test_id",
+        "tempo": 120.0,
         "key": 1,
         "mode": 1,
         "time_signature": 4,
-        "danceability": 0.8,
-        "energy": 0.9,
-        "loudness": -5.5
+        "duration_ms": int(TEST_TRACK_DURATION * 1000),
+        "loudness": -8.0,
+        "energy": 0.8
     }
 
 class TestSpotifyProvider:
     """Test cases for SpotifyProvider."""
     
-    @pytest.mark.asyncio
     async def test_authentication(self, spotify_config):
         """Test Spotify authentication."""
-        provider = SpotifyProvider(
-            client_id=spotify_config["SPOTIFY_CLIENT_ID"],
-            client_secret=spotify_config["SPOTIFY_CLIENT_SECRET"]
-        )
+        provider = SpotifyProvider(spotify_config)
+        await provider.authenticate()
+        assert provider.is_authenticated()
         
-        with patch("aiohttp.ClientSession.post") as mock_post:
-            mock_post.return_value.__aenter__.return_value.status = 200
-            mock_post.return_value.__aenter__.return_value.json = \
-                asyncio.coroutine(lambda: {"access_token": "test_token", "expires_in": 3600})
-            
-            token = await provider._get_access_token()
-            assert token == "test_token"
-    
-    @pytest.mark.asyncio
     async def test_search_track(self, spotify_config, mock_spotify_response):
         """Test track search functionality."""
-        provider = SpotifyProvider(
-            client_id=spotify_config["SPOTIFY_CLIENT_ID"],
-            client_secret=spotify_config["SPOTIFY_CLIENT_SECRET"]
-        )
-        
-        with patch("aiohttp.ClientSession.request") as mock_request:
-            mock_request.return_value.__aenter__.return_value.status = 200
-            mock_request.return_value.__aenter__.return_value.json = \
-                asyncio.coroutine(lambda: mock_spotify_response)
+        provider = SpotifyProvider(spotify_config)
+        with patch('aiohttp.ClientSession.get') as mock_get:
+            mock_get.return_value.__aenter__.return_value.json.return_value = mock_spotify_response
+            mock_get.return_value.__aenter__.return_value.status = 200
             
-            tracks = await provider.search_track("test query")
-            assert len(tracks) == 1
-            assert tracks[0]["name"] == "Test Track"
-            assert tracks[0]["artists"] == ["Test Artist"]
+            track = await provider.search_track(TEST_TRACK_TITLE, TEST_TRACK_ARTIST)
+            assert track is not None
+            assert track.song_name == TEST_TRACK_TITLE
+            assert track.artist == TEST_TRACK_ARTIST
+            assert track.album == TEST_TRACK_ALBUM
+            assert track.duration_ms == int(TEST_TRACK_DURATION * 1000)
     
-    @pytest.mark.asyncio
     async def test_get_track_details(self, spotify_config, mock_spotify_track, mock_audio_features):
         """Test track details retrieval."""
-        provider = SpotifyProvider(
-            client_id=spotify_config["SPOTIFY_CLIENT_ID"],
-            client_secret=spotify_config["SPOTIFY_CLIENT_SECRET"]
-        )
-        
-        with patch("aiohttp.ClientSession.request") as mock_request:
-            mock_request.return_value.__aenter__.return_value.status = 200
-            mock_request.return_value.__aenter__.return_value.json = \
-                asyncio.coroutine(lambda: mock_spotify_track)
+        provider = SpotifyProvider(spotify_config)
+        with patch('aiohttp.ClientSession.get') as mock_get:
+            mock_get.return_value.__aenter__.return_value.json.side_effect = [
+                mock_spotify_track,
+                mock_audio_features
+            ]
+            mock_get.return_value.__aenter__.return_value.status = 200
             
             details = await provider.get_track_details("test_id")
-            assert details["name"] == "Test Track"
-            assert details["artists"] == ["Test Artist"]
+            assert details is not None
+            assert details["name"] == TEST_TRACK_TITLE
+            assert details["artists"][0]["name"] == TEST_TRACK_ARTIST
+            assert details["album"]["name"] == TEST_TRACK_ALBUM
+            assert details["duration_ms"] == int(TEST_TRACK_DURATION * 1000)
     
-    @pytest.mark.asyncio
     async def test_rate_limit_handling(self, spotify_config):
         """Test rate limit error handling."""
-        provider = SpotifyProvider(
-            client_id=spotify_config["SPOTIFY_CLIENT_ID"],
-            client_secret=spotify_config["SPOTIFY_CLIENT_SECRET"]
-        )
-        
-        with patch("aiohttp.ClientSession.request") as mock_request:
-            mock_request.return_value.__aenter__.return_value.status = 429
-            mock_request.return_value.__aenter__.return_value.headers = {"Retry-After": "60"}
+        provider = SpotifyProvider(spotify_config)
+        with patch('aiohttp.ClientSession.get') as mock_get:
+            mock_get.return_value.__aenter__.return_value.status = 429
+            mock_get.return_value.__aenter__.return_value.headers = {"Retry-After": "1"}
             
             with pytest.raises(RateLimitError):
-                await provider.search_track("test query")
+                await provider.search_track(TEST_TRACK_TITLE, TEST_TRACK_ARTIST)
 
 class TestProviderFactory:
     """Test cases for ProviderFactory."""
@@ -149,24 +138,25 @@ class TestProviderFactory:
     def test_create_factory(self, spotify_config):
         """Test factory creation with configuration."""
         factory = create_provider_factory(spotify_config)
-        assert factory.get_metadata_provider("spotify") is not None
+        assert isinstance(factory, ProviderFactory)
+        assert factory.config == spotify_config
     
     def test_register_providers(self):
         """Test provider registration."""
-        factory = ProviderFactory()
-        mock_provider = Mock(spec=MetadataProvider)
-        
-        factory.register_metadata_provider("test", mock_provider)
-        assert factory.get_metadata_provider("test") == mock_provider
+        factory = ProviderFactory({})
+        provider = Mock(spec=TrackIdentificationProvider)
+        factory.register_provider("test", provider)
+        assert factory.get_provider("test") == provider
     
-    @pytest.mark.asyncio
     async def test_close_all(self):
         """Test closing all provider connections."""
-        factory = ProviderFactory()
-        mock_provider = Mock(spec=MetadataProvider)
-        mock_provider.close = asyncio.coroutine(lambda: None)
+        factory = ProviderFactory({})
+        provider1 = Mock(spec=TrackIdentificationProvider)
+        provider2 = Mock(spec=MetadataProvider)
         
-        factory.register_metadata_provider("test", mock_provider)
+        factory.register_provider("provider1", provider1)
+        factory.register_provider("provider2", provider2)
+        
         await factory.close_all()
-        
-        mock_provider.close.assert_called_once()
+        provider1.close.assert_called_once()
+        provider2.close.assert_called_once()
