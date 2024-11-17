@@ -44,6 +44,17 @@ Get started today and elevate your music experience!
   - Memory-efficient processing
   - Configurable settings
 
+## Documentation
+
+📚 **[View Full Documentation](docs/README.md)**
+
+- [Getting Started Guide](docs/GETTING_STARTED.md)
+- [API Documentation](docs/API.md)
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Audio Processing Guide](docs/AUDIO_PROCESSING.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Testing Guide](tests/TESTING.md)
+
 ## Installation
 
 1. Clone the repository:
@@ -201,44 +212,21 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 https://open.spotify.com/track/...
 ```
 
-## Performance Features
-
-### Caching System
-- File-based caching of API responses
-- Configurable cache duration
-- Automatic cache expiration
-- Segment-level caching for track identification
-
-### Rate Limiting
-- Token bucket algorithm for API request management
-- Configurable requests per minute
-- Thread-safe implementation
-- Optional timeout for token acquisition
-
-### Memory Optimization
-- Chunk-based audio file reading
-- Segment-level processing
-- Efficient memory management
-- Reduced memory footprint
-
-### Provider System
-- Modular provider architecture
-- Multiple provider support
-- Rich metadata enrichment
-- Extensible interface design
-
 ## Development
 
-### Running Tests
+### Testing
 ```bash
-pytest tests/
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov
+
+# Run specific provider tests
+pytest tests/test_providers/
 ```
 
-### Adding New Providers
-1. Implement the provider interface
-2. Register the provider in the factory
-3. Add provider configuration
-4. Update documentation
+For detailed testing information, see our [Testing Guide](tests/TESTING.md).
 
 ## Contributing
 
