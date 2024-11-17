@@ -23,6 +23,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - XML export
   - Rekordbox compatible format
 
+## [0.5.5] - 2024-01-20
+
+### Added
+- Comprehensive test suites for all providers
+  * ACRCloud provider tests
+  * Shazam provider tests
+  * Spotify provider tests
+- New testing documentation with detailed guides
+- AI development guidelines and best practices
+- Enhanced documentation structure and navigation
+
+### Changed
+- Reorganized project documentation
+- Updated README with better organization
+- Improved cross-referencing between docs
+- Enhanced test coverage requirements
+  * Core functionality: 90%+
+  * Provider implementations: 95%+
+  * Integration tests: 80%+
+
+### Removed
+- Duplicate CONTRIBUTING.md from docs directory
+
+### Documentation
+- Created comprehensive testing guide in tests/TESTING.md
+- Added detailed AI development guidelines
+- Improved documentation index in docs/README.md
+- Enhanced provider testing documentation
+- Updated example test patterns and best practices
+
+## [0.5.4] - 2024-03-23
+### Added
+- Comprehensive test suites for providers:
+  - ACRCloud provider tests
+  - Shazam provider tests
+  - Spotify provider tests
+- Test coverage for edge cases and error handling
+- Mock responses and fixtures for testing
+- Rate limiting and authentication tests
+- Network error handling tests
+
+### Changed
+- Improved provider test organization
+- Enhanced error handling in providers
+- Updated test documentation
+- Standardized test patterns across providers
+
+### Fixed
+- Duplicate CONTRIBUTING.md files
+- Documentation cross-references
+- Test coverage gaps in providers
+
+## [0.5.3] - 2024-03-22
+### Added
+- Comprehensive project documentation:
+  - API.md: Detailed API reference and usage examples
+  - ARCHITECTURE.md: System design and component interactions
+  - GETTING_STARTED.md: Installation and basic usage guide
+  - CONTRIBUTING.md: Development workflow and guidelines
+  - Enhanced README.md with badges and project overview
+- Documentation features:
+  - Code examples for common use cases
+  - Architecture diagrams
+  - Type hints and docstrings
+  - Testing guidelines
+  - Security considerations
+  - Performance optimization guides
+  - Deployment instructions
+  - Error handling strategies
+
+### Changed
+- Reorganized documentation structure
+- Enhanced code examples with async/await patterns
+- Updated project status and coverage metrics
+- Improved installation instructions
+- Expanded troubleshooting guides
+- Added detailed configuration examples, 
+- Enhanced provider documentation
+
+### Fixed
+- Documentation inconsistencies
+- Broken internal links
+- Code example formatting
+- Missing type hints in examples
+- Outdated configuration examples
+
 ## [0.5.2] - 2024-03-22
 ### Changed
 - Migrated ACRCloud to provider interface
