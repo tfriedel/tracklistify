@@ -93,11 +93,17 @@ class ShazamProvider(TrackIdentificationProvider):
             confidence = 0.9 if title_match else 0.0
             confidence = confidence * (0.7 + 0.3 * metadata_completeness)
             
+            # Safely extract metadata
+            sections = track_info.get('sections', [{}])
+            metadata = sections[0].get('metadata', []) if sections else []
+            album = next((item.get('text', '') for item in metadata if item.get('title') == 'Album'), '')
+            year = next((item.get('text', '') for item in metadata if item.get('title') == 'Released'), '')
+            
             return {
                 'title': track_info.get('title', ''),
                 'artist': track_info.get('subtitle', ''),
-                'album': track_info.get('sections', [{}])[0].get('metadata', [{}])[0].get('text', ''),
-                'year': track_info.get('sections', [{}])[0].get('metadata', [{}])[1].get('text', ''),
+                'album': album,
+                'year': year,
                 'genre': track_info.get('genres', {}).get('primary', ''),
                 'confidence': confidence,
                 'provider': 'shazam',

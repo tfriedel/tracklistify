@@ -105,8 +105,7 @@ class ACRCloudProvider(TrackIdentificationProvider):
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.post(
                     self.endpoint,
-                    data=request_data["data"],
-                    data=request_data["files"]
+                    data={**request_data["data"], **request_data["files"]}
                 ) as response:
                     if response.status == 401:
                         raise AuthenticationError("Invalid ACRCloud credentials")

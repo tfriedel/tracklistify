@@ -6,6 +6,31 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+class Provider:
+    """Base class for track identification providers."""
+
+    def __init__(self, config):
+        """Initialize provider with config."""
+        self.config = config
+
+    def identify_tracks(self, file_path: str, start_time: int = 0, duration: int = None) -> List:
+        """Identify tracks in an audio file.
+        
+        Args:
+            file_path: Path to audio file
+            start_time: Start time in seconds
+            duration: Duration in seconds
+            
+        Returns:
+            List of identified tracks
+        """
+        # This is a default implementation that returns an empty list
+        # Subclasses should override this method
+        return []
+
+class Track:
+    pass
+
 class TrackIdentificationProvider(ABC):
     """Base class for track identification providers."""
     
