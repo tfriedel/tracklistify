@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Type, Union
 from .base import TrackIdentificationProvider, MetadataProvider
 from .spotify import SpotifyProvider
 from .shazam import ShazamProvider
+from .acrcloud import ACRCloudProvider
 
 logger = logging.getLogger(__name__)
 
@@ -53,48 +54,64 @@ class ProviderFactory:
             if hasattr(provider, 'close'):
                 await provider.close()
 
-def create_provider(provider_type: str) -> Union[TrackIdentificationProvider, MetadataProvider]:
-    """
-    Create a provider instance based on the provider type.
-    
+def create_provider(provider_type: str, **kwargs) -> Union[TrackIdentificationProvider, MetadataProvider]:
+    """Create a provider instance based on the provider type.
+
     Args:
         provider_type: Type of provider to create
-        
+        **kwargs: Provider-specific configuration options
+
     Returns:
         Provider instance
     """
     providers = {
-        'spotify': SpotifyProvider,
-        'shazam': ShazamProvider,
+        "spotify": SpotifyProvider,
+        "shazam": ShazamProvider,
+        "acrcloud": ACRCloudProvider,
     }
 
+    provider_class = providers.get(provider_type)
+    if not provider_class:
+        raise ValueError(f"Unknown provider type: {provider_type}")
+
+    return provider_class(**kwargs)
+
 def create_provider_factory(config: Dict) -> ProviderFactory:
-    """
-    Create and configure a provider factory based on configuration.
-    
+    """Create and configure a provider factory based on configuration.
+
     Args:
         config: Configuration dictionary containing provider settings
-        
+
     Returns:
         Configured ProviderFactory instance
     """
     factory = ProviderFactory()
-    
-    # Configure Spotify provider if credentials are available
-    if config.get('SPOTIFY_CLIENT_ID') and config.get('SPOTIFY_CLIENT_SECRET'):
-        spotify = SpotifyProvider(
-            client_id=config['SPOTIFY_CLIENT_ID'],
-            client_secret=config['SPOTIFY_CLIENT_SECRET']
+
+    # Configure ACRCloud provider
+    if "ACR_ACCESS_KEY" in config and "ACR_ACCESS_SECRET" in config:
+        acr_provider = ACRCloudProvider(
+            access_key=config["ACR_ACCESS_KEY"],
+            access_secret=config["ACR_ACCESS_SECRET"],
+            host=config.get("ACR_HOST", "identify-eu-west-1.acrcloud.com"),
+            timeout=int(config.get("ACR_TIMEOUT", 10)),
         )
-        factory.register_metadata_provider('spotify', spotify)
-        logger.info("Registered Spotify metadata provider")
-    
-    # Configure Shazam provider if credentials are available
-    if config.get('SHAZAM_API_KEY'):
-        shazam = ShazamProvider(api_key=config['SHAZAM_API_KEY'])
-        factory.register_identification_provider('shazam', shazam)
-        logger.info("Registered Shazam track identification provider")
-    
-    # Add more providers here as they are implemented
-    
+        factory.register_identification_provider("acrcloud", acr_provider)
+
+    # Configure Shazam provider
+    if "SHAZAM_API_KEY" in config:
+        shazam_provider = ShazamProvider(
+            api_key=config["SHAZAM_API_KEY"],
+            timeout=int(config.get("SHAZAM_TIMEOUT", 10)),
+        )
+        factory.register_identification_provider("shazam", shazam_provider)
+
+    # Configure Spotify provider
+    if "SPOTIFY_CLIENT_ID" in config and "SPOTIFY_CLIENT_SECRET" in config:
+        spotify_provider = SpotifyProvider(
+            client_id=config["SPOTIFY_CLIENT_ID"],
+            client_secret=config["SPOTIFY_CLIENT_SECRET"],
+            timeout=int(config.get("SPOTIFY_TIMEOUT", 10)),
+        )
+        factory.register_metadata_provider("spotify", spotify_provider)
+
     return factory

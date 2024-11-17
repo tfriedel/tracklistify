@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - XML export
   - Rekordbox compatible format
 
+## [0.5.2] - 2024-03-22
+### Changed
+- Migrated ACRCloud to provider interface
+- Enhanced provider factory with better configuration
+- Improved error handling for providers
+- Standardized provider timeouts
+
 ## [0.5.1] - 2024-03-22
 ### Added
 - Comprehensive contributing guidelines (CONTRIBUTING.md)
