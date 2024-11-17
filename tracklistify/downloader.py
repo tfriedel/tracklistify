@@ -1,107 +1,133 @@
 """
-Audio download and processing functionality.
+Audio file downloader module.
 """
 
 import os
-import tempfile
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 import yt_dlp
-from .logger import logger
-from .config import get_config
 
-class Downloader(ABC):
+from .config import get_config
+from .exceptions import DownloadError
+from .logger import get_logger
+
+logger = get_logger(__name__)
+
+class AudioDownloader:
     """Base class for audio downloaders."""
     
-    @abstractmethod
-    def download(self, url: str) -> Optional[str]:
-        """Download audio from URL."""
-        pass
+    def __init__(self, download_dir: Optional[Path] = None, options: Optional[Dict[str, Any]] = None):
+        """Initialize downloader with options."""
+        self.config = get_config()
+        self.download_dir = download_dir or Path(self.config.get('download_dir', 'downloads'))
+        self.options = options or {}
         
-    @staticmethod
-    def get_ffmpeg_path() -> str:
-        """Find FFmpeg executable path."""
-        # Check common locations
-        common_paths = [
-            '/opt/homebrew/bin/ffmpeg',  # Homebrew on Apple Silicon
-            '/usr/local/bin/ffmpeg',     # Homebrew on Intel Mac
-            '/usr/bin/ffmpeg',           # Linux
-        ]
+        # Ensure download directory exists and is writable
+        try:
+            self.download_dir.mkdir(parents=True, exist_ok=True)
+            test_file = self.download_dir / '.test'
+            test_file.touch()
+            test_file.unlink()
+        except (PermissionError, OSError) as e:
+            raise DownloadError(f"Cannot access download directory: {str(e)}")
         
-        for path in common_paths:
-            if os.path.isfile(path):
-                return path
-                
-        # Try finding in PATH
-        import shutil
-        ffmpeg_path = shutil.which('ffmpeg')
-        if ffmpeg_path:
-            return ffmpeg_path
-            
-        raise FileNotFoundError("FFmpeg not found. Please install FFmpeg first.")
-
-class YouTubeDownloader(Downloader):
-    """YouTube video downloader."""
+    def download(self, url: str, filename: Optional[str] = None) -> Path:
+        """Download audio from URL to output path."""
+        if not filename:
+            # For YouTube URLs, use video ID as filename
+            if 'youtube.com' in url or 'youtu.be' in url:
+                video_id = url.split('watch?v=')[-1].split('&')[0]
+                filename = video_id
+            else:
+                filename = url.split('/')[-1]
+        output_path = self.download_dir / filename
+        return self._download_file(url, output_path)
     
-    def __init__(self):
-        self.ffmpeg_path = self.get_ffmpeg_path()
-        logger.info(f"Using FFmpeg from: {self.ffmpeg_path}")
-        
-    def download(self, url: str) -> Optional[str]:
-        """
-        Download audio from YouTube URL.
-        
-        Args:
-            url: YouTube video URL
-            
-        Returns:
-            str: Path to downloaded audio file, or None if download failed
-        """
-        ydl_opts = {
+    def _download_file(self, url: str, output_path: Path) -> Path:
+        """Internal method to handle actual download."""
+        raise NotImplementedError("Subclasses must implement _download_file")
+
+class YouTubeDownloader(AudioDownloader):
+    """YouTube audio downloader using yt-dlp."""
+    
+    def __init__(self, download_dir: Optional[Path] = None, options: Optional[Dict[str, Any]] = None):
+        """Initialize YouTube downloader."""
+        super().__init__(download_dir, options)
+        self.default_options = {
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }],
-            'ffmpeg_location': self.ffmpeg_path,
-            'outtmpl': os.path.join(tempfile.gettempdir(), '%(id)s.%(ext)s'),
-            'verbose': get_config().app.verbose,
+            'outtmpl': '%(id)s.%(ext)s',
+            'quiet': True,
+            'no_warnings': True
         }
         
+    def _download_file(self, url: str, output_path: Path) -> Path:
+        """Download audio from YouTube URL."""
+        # Define paths for temporary files
+        temp_files = [
+            output_path.with_suffix('.part'),
+            output_path.with_suffix('.ytdl'),
+            output_path.with_name(f"{output_path.stem}.part"),
+            output_path.with_name(f"{output_path.stem}.ytdl")
+        ]
+        
+        # Clean up any existing temporary files
+        for temp_file in temp_files:
+            if temp_file.exists():
+                temp_file.unlink()
+            
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                mp3_path = str(Path(filename).with_suffix('.mp3'))
-                logger.info(f"Downloaded: {info.get('title', 'Unknown title')}")
-                return mp3_path
+            # Merge default options with user options
+            options = {**self.default_options, **self.options}
+            options['outtmpl'] = str(output_path.with_suffix(''))
+            
+            # Create YoutubeDL instance
+            ydl = yt_dlp.YoutubeDL(options)
+            
+            # Extract info and download
+            info = ydl.extract_info(url, download=True)
+            if not info:
+                raise DownloadError(f"Could not extract info from URL: {url}")
+                
+            ext = info.get('ext', self.default_options['postprocessors'][0]['preferredcodec'])
+            final_path = output_path.with_suffix(f'.{ext}')
+            
+            # Clean up any temporary files that might have been created
+            for temp_file in temp_files:
+                if temp_file.exists():
+                    temp_file.unlink()
+                    
+            return final_path
                 
         except Exception as e:
-            logger.error(f"Failed to download {url}: {str(e)}")
-            return None
+            # Clean up any temporary files
+            for temp_file in temp_files:
+                if temp_file.exists():
+                    temp_file.unlink()
+            raise DownloadError(f"Failed to download from {url}: {str(e)}")
 
 class DownloaderFactory:
-    """Factory for creating appropriate downloader instances."""
+    """Factory for creating appropriate downloaders."""
     
-    def __init__(self):
-        self._config = get_config()
+    DOWNLOADERS = {
+        'youtube': YouTubeDownloader,
+        'youtu.be': YouTubeDownloader
+    }
     
-    @staticmethod
-    def create_downloader(url: str) -> Optional[Downloader]:
-        """
-        Create appropriate downloader based on URL.
-        
-        Args:
-            url: Media URL
-            
-        Returns:
-            Downloader: Appropriate downloader instance, or None if unsupported
-        """
-        if 'youtube.com' in url or 'youtu.be' in url:
-            return YouTubeDownloader()
-        # Add more platform support here
-        
-        logger.error(f"Unsupported platform: {url}")
-        return None
+    @classmethod
+    def create_downloader(cls, url: str, download_dir: Optional[Path] = None, 
+                         options: Optional[Dict[str, Any]] = None) -> AudioDownloader:
+        """Create appropriate downloader for URL."""
+        for domain, downloader_class in cls.DOWNLOADERS.items():
+            if domain in url:
+                return downloader_class(download_dir, options)
+        raise DownloadError(f"No downloader available for URL: {url}")
+    
+    @classmethod
+    def supports_url(cls, url: str) -> bool:
+        """Check if URL is supported by any downloader."""
+        return any(domain in url for domain in cls.DOWNLOADERS)

@@ -92,8 +92,19 @@ def setup_logger(
     
     return logger
 
+def get_logger(name: str) -> logging.Logger:
+    """Get a logger instance for the specified name.
+    
+    Args:
+        name: Logger name (usually __name__)
+        
+    Returns:
+        logging.Logger: Logger instance
+    """
+    return setup_logger(name)
+
 # Create default logger instance
-logger = setup_logger()
+logger = get_logger("tracklistify")
 
 def set_verbose(verbose: bool = True):
     """Set logger verbosity level."""

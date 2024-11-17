@@ -7,6 +7,7 @@ with exponential backoff and configurable retry conditions.
 
 import time
 import random
+import asyncio
 from functools import wraps
 from typing import Callable, Type, Union, List, Optional
 import logging
@@ -113,17 +114,15 @@ def with_timeout(timeout: float):
     """
     def decorator(func: Callable):
         @wraps(func)
-        def wrapper(*args, **kwargs):
-            start_time = time.time()
-            result = func(*args, **kwargs)
-            
-            if (time.time() - start_time) > timeout:
+        async def wrapper(*args, **kwargs):
+            try:
+                # Use asyncio.wait_for to handle asynchronous timeout
+                return await asyncio.wait_for(func(*args, **kwargs), timeout)
+            except asyncio.TimeoutError:
                 raise TimeoutError(
                     f"Operation timed out after {timeout} seconds",
                     timeout=timeout,
                     operation=func.__name__
                 )
-            
-            return result
         return wrapper
     return decorator

@@ -9,100 +9,110 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .config import get_config
+from .track import Track
 from .logger import logger
 
+class CacheEntry:
+    """Represents a cached track entry."""
+    
+    def __init__(self, track: Track, timestamp: float):
+        """Initialize cache entry."""
+        self.track = track
+        self.timestamp = timestamp
+        
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert entry to dictionary."""
+        return {
+            'track': self.track.to_dict(),
+            'timestamp': self.timestamp
+        }
+        
+    def to_json(self) -> str:
+        """Convert entry to JSON string."""
+        return json.dumps(self.to_dict())
+        
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CacheEntry':
+        """Create entry from JSON string."""
+        data = json.loads(json_str)
+        return cls(
+            track=Track.from_dict(data['track']),
+            timestamp=data['timestamp']
+        )
+
 class Cache:
-    """Simple file-based cache for API responses."""
+    """Simple file-based cache for track identification results."""
     
     def __init__(self, cache_dir: str = ".cache"):
         """Initialize cache with directory."""
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._config = get_config()
         
-    def _get_cache_path(self, key: str) -> Path:
-        """Get cache file path for key."""
-        # Use first 2 chars of key as subdirectory to avoid too many files in one dir
-        subdir = key[:2] if len(key) > 2 else "default"
-        cache_subdir = self.cache_dir / subdir
-        cache_subdir.mkdir(exist_ok=True)
-        return cache_subdir / f"{key}.json"
+    def _generate_key(self, url: str) -> str:
+        """Generate cache key from URL."""
+        import hashlib
+        return hashlib.sha256(url.encode()).hexdigest()
         
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
+    def save(self, url: str, track: Track) -> None:
         """
-        Get value from cache.
+        Save track to cache.
         
         Args:
-            key: Cache key (usually a hash of the audio segment)
-            
-        Returns:
-            Dict containing cached data if valid, None otherwise
+            url: Source URL
+            track: Track to cache
         """
-        cache_path = self._get_cache_path(key)
-        if not cache_path.exists():
-            return None
-            
-        try:
-            with open(cache_path, 'r') as f:
-                data = json.load(f)
-                
-            # Check if cache is expired
-            if time.time() - data['timestamp'] > self._config.cache.duration:
-                logger.debug(f"Cache expired for key: {key}")
-                os.remove(cache_path)
-                return None
-                
-            logger.debug(f"Cache hit for key: {key}")
-            return data['value']
-            
-        except (json.JSONDecodeError, KeyError, OSError) as e:
-            logger.warning(f"Failed to read cache for key {key}: {str(e)}")
-            return None
-            
-    def set(self, key: str, value: Dict[str, Any]) -> None:
-        """
-        Set value in cache.
+        key = self._generate_key(url)
+        entry = CacheEntry(track=track, timestamp=time.time())
         
-        Args:
-            key: Cache key
-            value: Data to cache
-        """
-        cache_path = self._get_cache_path(key)
         try:
-            cache_data = {
-                'timestamp': time.time(),
-                'value': value
-            }
-            with open(cache_path, 'w') as f:
-                json.dump(cache_data, f)
-            logger.debug(f"Cached response for key: {key}")
+            cache_file = self.cache_dir / f"{key}.json"
+            with open(cache_file, 'w') as f:
+                json.dump(entry.to_dict(), f)
+            logger.debug(f"Cached track for URL: {url}")
             
         except OSError as e:
-            logger.warning(f"Failed to write cache for key {key}: {str(e)}")
+            logger.warning(f"Failed to write cache for URL {url}: {str(e)}")
             
-    def clear(self, max_age: Optional[int] = None) -> None:
+    def load(self, url: str) -> Optional[Track]:
         """
-        Clear expired cache entries.
+        Load track from cache if valid.
         
         Args:
-            max_age: Maximum age in seconds, defaults to cache duration from config
-        """
-        if max_age is None:
-            max_age = self._config.cache.duration
+            url: Source URL
             
-        now = time.time()
-        count = 0
+        Returns:
+            Track if valid cache exists, None otherwise
+        """
+        key = self._generate_key(url)
+        cache_file = self.cache_dir / f"{key}.json"
         
-        for cache_file in self.cache_dir.rglob("*.json"):
-            try:
-                if cache_file.stat().st_mtime + max_age < now:
-                    cache_file.unlink()
-                    count += 1
-            except OSError:
-                continue
+        if not cache_file.exists():
+            return None
+            
+        try:
+            with open(cache_file, 'r') as f:
+                entry = CacheEntry.from_json(f.read())
                 
-        logger.info(f"Cleared {count} expired cache entries")
+            # Check if cache is expired (30 days)
+            if time.time() - entry.timestamp > 30 * 24 * 60 * 60:
+                logger.debug(f"Cache expired for URL: {url}")
+                os.remove(cache_file)
+                return None
+                
+            logger.debug(f"Cache hit for URL: {url}")
+            return entry.track
+            
+        except (json.JSONDecodeError, KeyError, OSError) as e:
+            logger.warning(f"Failed to read cache for URL {url}: {str(e)}")
+            return None
+            
+    def clear(self) -> None:
+        """Clear all cache entries."""
+        for cache_file in self.cache_dir.glob("*.json"):
+            try:
+                cache_file.unlink()
+            except OSError as e:
+                logger.warning(f"Failed to delete cache file {cache_file}: {str(e)}")
 
 # Global cache instance
 _cache_instance = None

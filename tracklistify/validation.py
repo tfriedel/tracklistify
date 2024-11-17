@@ -43,10 +43,15 @@ def validate_and_clean_url(url: str) -> Optional[str]:
         if not all([parsed.scheme, parsed.netloc]):
             return None
             
+        # Check for supported platforms
+        domain = parsed.netloc.lower()
+        if not any(platform in domain for platform in ['youtube.com', 'youtu.be', 'mixcloud.com', 'soundcloud.com']):
+            return None
+            
         # Validate YouTube URLs
-        if 'youtube.com' in parsed.netloc or 'youtu.be' in parsed.netloc:
+        if 'youtube.com' in domain or 'youtu.be' in domain:
             # Extract video ID
-            if 'youtube.com' in parsed.netloc:
+            if 'youtube.com' in domain:
                 video_id = re.search(r'[?&]v=([^&]+)', url)
             else:  # youtu.be
                 video_id = re.search(r'youtu\.be/([^?&]+)', url)
@@ -58,7 +63,7 @@ def validate_and_clean_url(url: str) -> Optional[str]:
             return f'https://www.youtube.com/watch?v={video_id.group(1)}'
             
         # For other URLs, return cleaned version
-        return f'{parsed.scheme}://{parsed.netloc}{parsed.path}'
+        return f'{parsed.scheme}://{parsed.netloc}{parsed.path}'.rstrip('/')
         
     except Exception:
         return None
@@ -73,7 +78,20 @@ def is_valid_url(url: str) -> bool:
     Returns:
         bool: True if URL is valid, False otherwise
     """
-    return validate_and_clean_url(url) is not None
+    try:
+        cleaned = clean_url(url)
+        parsed = urlparse(cleaned)
+        
+        # Check for supported platforms
+        domain = parsed.netloc.lower()
+        if not any(platform in domain for platform in ['youtube.com', 'youtu.be', 'mixcloud.com', 'soundcloud.com']):
+            return False
+            
+        return True
+    except URLValidationError:
+        return False
+    except Exception:
+        return False
 
 def is_youtube_url(url: str) -> bool:
     """
@@ -171,7 +189,7 @@ def validate_url(url: str) -> bool:
         
         # Check for supported platforms
         domain = parsed.netloc.lower()
-        if not any(platform in domain for platform in ['youtube.com', 'mixcloud.com', 'soundcloud.com']):
+        if not any(platform in domain for platform in ['youtube.com', 'youtu.be', 'mixcloud.com', 'soundcloud.com']):
             raise URLValidationError("Unsupported platform")
             
         return True

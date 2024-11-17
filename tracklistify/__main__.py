@@ -18,6 +18,169 @@ from .output import TracklistOutput
 from .validation import validate_and_clean_url, is_valid_url, is_youtube_url
 from .cache import get_cache
 from .rate_limiter import get_rate_limiter
+from .providers.factory import ProviderFactory
+
+async def process_segment(audio_path: str, start_bytes: int, end_bytes: int, rate_limiter) -> Optional[dict]:
+    """Process an audio segment with rate limiting."""
+    config = get_config()
+    provider_factory = ProviderFactory()
+    
+    try:
+        # Read just the segment we need
+        with open(audio_path, 'rb') as f:
+            f.seek(start_bytes)
+            segment = f.read(end_bytes - start_bytes)
+        
+        # Apply rate limiting if enabled
+        if config.app.rate_limit_enabled:
+            if not rate_limiter.acquire(timeout=30):
+                logger.warning("Rate limit exceeded, skipping segment")
+                return None
+        
+        # Try each provider in sequence
+        for provider_name in ['shazam', 'acrcloud']:
+            provider = provider_factory.get_identification_provider(provider_name)
+            if not provider:
+                continue
+                
+            try:
+                result = await provider.identify_track(segment)
+                if result and result.get('title'):
+                    return {
+                        'status': {'code': 0},
+                        'metadata': {
+                            'music': [{
+                                'title': result['title'],
+                                'artists': [{'name': result['artist']}],
+                                'duration_ms': int(result.get('duration', 0) * 1000),
+                                'score': result['confidence']
+                            }]
+                        }
+                    }
+            except Exception as e:
+                logger.warning(f"Provider {provider_name} failed: {str(e)}")
+                continue
+                
+        return None
+        
+    except Exception as e:
+        logger.error(f"Error processing segment: {str(e)}")
+        return None
+
+async def identify_tracks(audio_path: str) -> Optional[List[Track]]:
+    """
+    Identify tracks in an audio file with precise timing.
+    
+    Args:
+        audio_path: Path to audio file
+        
+    Returns:
+        List[Track]: List of identified tracks, or None if identification failed
+    """
+    config = get_config()
+    cache = get_cache()
+    rate_limiter = get_rate_limiter()
+    
+    try:
+        from mutagen import File
+        
+        # Get audio file metadata
+        audio = File(audio_path)
+        if audio is None:
+            logger.error("Failed to read audio file metadata")
+            return None
+            
+        total_length = audio.info.length  # Duration in seconds
+        segment_length = config.track.segment_length  # Already in seconds
+        overlap = segment_length / 2  # Use 50% overlap for better accuracy
+        total_segments = int((total_length - overlap) // (segment_length - overlap)) + 1
+        
+        logger.info(f"Starting track identification...")
+        total_time_str = f"{int(total_length//3600):02d}:{int((total_length%3600)//60):02d}:{int(total_length%60):02d}"
+        logger.info(f"Total length: {total_time_str}")
+        logger.info(f"Total segments to analyze: {total_segments}")
+        logger.info(f"Segment length: {segment_length} seconds")
+        logger.info(f"Segment overlap: {overlap} seconds")
+        
+        matcher = TrackMatcher()
+        
+        # Process file in overlapping chunks
+        audio_size = os.path.getsize(audio_path)
+        bytes_per_second = audio_size / total_length
+        
+        for i in range(total_segments):
+            start_time = i * (segment_length - overlap)
+            end_time = min(start_time + segment_length, total_length)
+            
+            start_bytes = int((start_time / total_length) * audio_size)
+            end_bytes = int((end_time / total_length) * audio_size)
+            
+            # Format time with leading zeros (HH:MM:SS)
+            time_str = f"{int(start_time//3600):02d}:{int((start_time%3600)//60):02d}:{int(start_time%60):02d}"
+            logger.info(f"Analyzing segment {i+1}/{total_segments} at {time_str}...")
+            
+            # Calculate cache key
+            segment_hash = hashlib.md5(f"{audio_path}:{start_time}".encode()).hexdigest()
+            
+            # Process segment
+            try:
+                # Try cache first
+                if config.cache.enabled:
+                    cached_result = cache.get(segment_hash)
+                    if cached_result:
+                        data = cached_result
+                    else:
+                        data = await process_segment(audio_path, start_bytes, end_bytes, rate_limiter)
+                        if data:
+                            cache.set(segment_hash, data)
+                else:
+                    data = await process_segment(audio_path, start_bytes, end_bytes, rate_limiter)
+                
+                if data and data.get('status', {}).get('code') == 0:
+                    for music in data.get('metadata', {}).get('music', []):
+                        track = Track(
+                            song_name=music['title'],
+                            artist=music['artists'][0]['name'],
+                            time_in_mix=time_str,
+                            confidence=float(music['score'])
+                        )
+                        
+                        # Set precise timing
+                        track_start = start_time
+                        track_duration = music.get('duration_ms', segment_length * 1000) / 1000
+                        track_end = min(track_start + track_duration, total_length)
+                        track.set_timing(track_start, track_end, track.confidence)
+                        
+                        matcher.add_track(track)
+                        
+            except Exception as e:
+                logger.error(f"Error processing segment at {time_str}: {str(e)}")
+                continue
+        
+        # Merge and finalize tracks
+        final_tracks = matcher.merge_nearby_tracks()
+        
+        # Sort by start time
+        final_tracks.sort(key=lambda t: t.timing.start_time if t.timing else float('inf'))
+        
+        # Log gaps and overlaps
+        for i in range(len(final_tracks) - 1):
+            current = final_tracks[i]
+            next_track = final_tracks[i + 1]
+            
+            if current.overlaps_with(next_track):
+                overlap_duration = (current.timing.end_time - next_track.timing.start_time)
+                logger.warning(f"Overlap detected between tracks at {current.time_in_mix}: {overlap_duration:.1f} seconds")
+            else:
+                gap = current.gap_to(next_track)
+                if gap and gap > config.track.min_gap_threshold:
+                    logger.warning(f"Gap detected after track at {current.time_in_mix}: {gap:.1f} seconds")
+        
+        return final_tracks
+        
+    except Exception as e:
+        logger.error(f"Failed to identify tracks: {str(e)}")
+        return None
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
@@ -68,139 +231,7 @@ def get_segment_data(audio_data: bytes, start_bytes: int, end_bytes: int) -> byt
     """Get audio segment data from full audio."""
     return audio_data[start_bytes:end_bytes]
 
-def identify_tracks(audio_path: str) -> Optional[List[Track]]:
-    """
-    Identify tracks in an audio file.
-    
-    Args:
-        audio_path: Path to audio file
-        
-    Returns:
-        List[Track]: List of identified tracks, or None if identification failed
-    """
-    config = get_config()
-    cache = get_cache()
-    rate_limiter = get_rate_limiter()
-    
-    try:
-        from acrcloud.recognizer import ACRCloudRecognizer
-        from mutagen import File
-        
-        # Get audio file metadata
-        audio = File(audio_path)
-        if audio is None:
-            logger.error("Failed to read audio file metadata")
-            return None
-            
-        total_length = audio.info.length  # Duration in seconds
-        segment_length = config.track.segment_length  # Already in seconds
-        total_segments = int(total_length // segment_length)
-        
-        recognizer = ACRCloudRecognizer({
-            'access_key': config.acrcloud.access_key,
-            'access_secret': config.acrcloud.access_secret,
-            'host': config.acrcloud.host,
-            'timeout': config.acrcloud.timeout
-        })
-        
-        matcher = TrackMatcher()
-        
-        logger.info(f"Starting track identification...")
-        total_time_str = f"{int(total_length//3600):02d}:{int((total_length%3600)//60):02d}:{int(total_length%60):02d}"
-        logger.info(f"Total length: {total_time_str}")
-        logger.info(f"Total segments to analyze: {total_segments}")
-        logger.info(f"Segment length: {segment_length} seconds")
-        
-        identified_count = 0
-        
-        # Process file in chunks
-        audio_size = os.path.getsize(audio_path)
-        bytes_per_second = audio_size / total_length
-        
-        for i in range(total_segments):
-            start_time = i * segment_length
-            start_bytes = int((start_time / total_length) * audio_size)
-            end_bytes = int(((start_time + segment_length) / total_length) * audio_size)
-            
-            # Format time with leading zeros (HH:MM:SS)
-            time_str = f"{int(start_time//3600):02d}:{int((start_time%3600)//60):02d}:{int(start_time%60):02d}"
-            logger.info(f"Analyzing segment {i+1}/{total_segments} at {time_str}...")
-            
-            # Calculate cache key
-            segment_hash = hashlib.md5(f"{audio_path}:{start_time}".encode()).hexdigest()
-            
-            # Try to get from cache first
-            if config.cache.enabled:
-                cached_result = cache.get(segment_hash)
-                if cached_result:
-                    data = cached_result
-                else:
-                    # Read just the segment we need
-                    with open(audio_path, 'rb') as f:
-                        f.seek(start_bytes)
-                        segment = f.read(end_bytes - start_bytes)
-                    
-                    # Apply rate limiting if enabled
-                    if config.app.rate_limit_enabled:
-                        if not rate_limiter.acquire(timeout=30):
-                            logger.warning("Rate limit exceeded, skipping segment")
-                            continue
-                    
-                    result = recognizer.recognize_by_filebuffer(segment, 0)
-                    try:
-                        data = json.loads(result)
-                        if config.cache.enabled:
-                            cache.set(segment_hash, data)
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to parse ACRCloud response: {str(e)}")
-                        continue
-            else:
-                # No caching, just read and process
-                with open(audio_path, 'rb') as f:
-                    f.seek(start_bytes)
-                    segment = f.read(end_bytes - start_bytes)
-                
-                # Apply rate limiting if enabled
-                if config.app.rate_limit_enabled:
-                    if not rate_limiter.acquire(timeout=30):
-                        logger.warning("Rate limit exceeded, skipping segment")
-                        continue
-                
-                result = recognizer.recognize_by_filebuffer(segment, 0)
-                try:
-                    data = json.loads(result)
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse ACRCloud response: {str(e)}")
-                    continue
-            
-            if data['status']['code'] == 0 and data['metadata'].get('music'):
-                for music in data['metadata']['music']:
-                    track = Track(
-                        song_name=music['title'],
-                        artist=music['artists'][0]['name'],
-                        time_in_mix=time_str,
-                        confidence=float(music['score'])
-                    )
-                    matcher.add_track(track)
-                    identified_count += 1
-                    logger.info(f"Found track: {track.song_name} by {track.artist} (Confidence: {track.confidence:.1f}%)")
-            else:
-                logger.debug(f"No music detected in segment {i+1}")
-                
-        logger.info(f"\nTrack identification completed:")
-        logger.info(f"- Segments analyzed: {total_segments}")
-        logger.info(f"- Raw tracks identified: {identified_count}")
-        
-        merged_tracks = matcher.merge_nearby_tracks()
-        logger.info(f"- Final unique tracks after merging: {len(merged_tracks)}")
-        
-        return merged_tracks
-        
-    except Exception as e:
-        logger.error(f"Track identification failed: {str(e)}")
-        return None
-
-def get_mix_info(input_path: str) -> Optional[dict]:
+async def get_mix_info(input_path: str) -> Optional[dict]:
     """
     Extract mix information from input.
     
@@ -237,7 +268,7 @@ def get_mix_info(input_path: str) -> Optional[dict]:
         logger.error(f"Failed to get mix information: {str(e)}")
         return None
 
-def main():
+async def main():
     """Main entry point."""
     args = parse_args()
     
@@ -277,13 +308,13 @@ def main():
         audio_path = input_path
     
     # Get mix information
-    mix_info = get_mix_info(input_path)
+    mix_info = await get_mix_info(input_path)
     if not mix_info:
         logger.error("Failed to get mix information")
         return 1
     
     # Identify tracks
-    tracks = identify_tracks(audio_path)
+    tracks = await identify_tracks(audio_path)
     if not tracks:
         logger.error("No tracks identified")
         return 1
@@ -302,4 +333,5 @@ def main():
     return 0
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
