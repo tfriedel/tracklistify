@@ -48,7 +48,7 @@ Get started today and elevate your music experience!
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/tracklistify.git
+git clone https://github.com/betmoar/tracklistify.git
 cd tracklistify
 ```
 
