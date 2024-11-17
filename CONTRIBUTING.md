@@ -65,6 +65,28 @@ python -m venv venv
 pip install -e ".[dev]"
 ```
 
+## Development Process
+
+1. Fork the repo
+2. Create a new branch from `main`:
+   ```bash
+   git checkout -b feature/my-new-feature
+   ```
+3. Make your changes
+4. Run the test suite:
+   ```bash
+   pytest tests/
+   ```
+5. Commit your changes:
+   ```bash
+   git commit -m "feat: add some feature"
+   ```
+6. Push to your fork:
+   ```bash
+   git push origin feature/my-new-feature
+   ```
+7. Open a Pull Request
+
 ## Development Tools
 
 ### Code Style and Linting
@@ -106,6 +128,117 @@ We use pre-commit hooks to ensure code quality. Install them:
 pre-commit install
 ```
 
+## Coding Standards
+
+### Python Style Guide
+
+* Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/)
+* Use [Black](https://github.com/psf/black) for code formatting
+* Use [isort](https://pycqa.github.io/isort/) for import sorting
+* Use [flake8](https://flake8.pycqa.org/) for style guide enforcement
+
+### Type Hints
+
+* Use type hints for all function arguments and return values
+* Use `Optional` for parameters that can be None
+* Use `Union` for parameters that can be multiple types
+* Use `Any` sparingly and only when absolutely necessary
+
+Example:
+```python
+from typing import Dict, List, Optional
+
+def process_tracks(
+    tracks: List[Dict[str, str]],
+    provider: Optional[str] = None
+) -> List[Dict[str, str]]:
+    """Process a list of tracks."""
+    pass
+```
+
+### Documentation Style
+
+* Use Google-style docstrings
+* Include type information in docstrings
+* Document exceptions that may be raised
+* Include examples in docstrings when helpful
+
+Example:
+```python
+def identify_track(audio_data: bytes, start_time: float = 0) -> Dict[str, Any]:
+    """Identify a track from audio data.
+    
+    Args:
+        audio_data: Raw audio data bytes
+        start_time: Start time in seconds for identification
+        
+    Returns:
+        Dict containing track information
+        
+    Raises:
+        ProviderError: If track identification fails
+        ValueError: If audio_data is invalid
+        
+    Example:
+        >>> data = load_audio("song.mp3")
+        >>> result = identify_track(data)
+        >>> print(result["title"])
+        "Example Song"
+    """
+    pass
+```
+
+### Testing
+
+* Write unit tests for all new code
+* Use pytest fixtures for test setup
+* Mock external services
+* Include both success and error cases
+* Aim for 100% test coverage
+
+Example:
+```python
+import pytest
+from unittest.mock import Mock, patch
+
+@pytest.fixture
+def mock_provider():
+    return Mock()
+
+def test_track_identification(mock_provider):
+    with patch("tracklistify.providers.get_provider") as get_provider:
+        get_provider.return_value = mock_provider
+        mock_provider.identify_track.return_value = {"title": "Test"}
+        
+        result = identify_track(b"audio_data")
+        assert result["title"] == "Test"
+```
+
+### Commit Messages
+
+Follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+* feat: A new feature
+* fix: A bug fix
+* docs: Documentation only changes
+* style: Changes that do not affect the meaning of the code
+* refactor: A code change that neither fixes a bug nor adds a feature
+* perf: A code change that improves performance
+* test: Adding missing tests or correcting existing tests
+* chore: Changes to the build process or auxiliary tools
+
+Example:
+```
+feat(provider): add support for new music provider
+
+- Implement provider interface
+- Add configuration options
+- Update documentation
+- Add tests
+
+Closes #123
+```
+
 ## Development Workflow
 
 1. Create a new branch for your feature:
@@ -134,6 +267,18 @@ git push origin feature/your-feature-name
 ```
 
 4. Create a Pull Request on GitHub
+
+## Review Process
+
+1. All code changes require review
+2. Reviewers will look for:
+   * Correct functionality
+   * Test coverage
+   * Code style
+   * Documentation
+   * Performance implications
+3. Changes may need to be updated based on review feedback
+4. Once approved, changes will be merged by maintainers
 
 ## API Keys and Environment Variables
 
@@ -192,3 +337,29 @@ def process_audio(file_path: str, duration: int = 10) -> AudioSegment:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the project's MIT License.
+
+## Release Process
+
+1. Update version in `setup.py`
+2. Update CHANGELOG.md
+3. Create release branch
+4. Run full test suite
+5. Create and push tag
+6. Create GitHub release
+7. Upload to PyPI
+
+## Getting Help
+
+* Join our Discord server
+* Check the documentation
+* Open a GitHub issue
+* Contact the maintainers
+
+## Recognition
+
+Contributors will be:
+* Listed in CONTRIBUTORS.md
+* Mentioned in release notes
+* Credited in documentation
+
+Thank you for contributing to Tracklistify! 🎉
