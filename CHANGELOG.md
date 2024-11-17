@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - XML export
   - Rekordbox compatible format
 
+## [0.5.1] - 2024-03-22
+### Added
+- Comprehensive contributing guidelines (CONTRIBUTING.md)
+- Detailed development environment setup instructions
+- Code style and linting configuration
+- Pre-commit hooks setup
+
+### Changed
+- Enhanced environment configuration template
+- Expanded documentation for API keys and settings
+- Improved project structure documentation
+
 ## [0.5.0] - 2024-03-22
 ### Added
 - Enhanced Shazam integration:
